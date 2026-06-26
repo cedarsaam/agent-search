@@ -34,6 +34,26 @@
 - **Tavily 兼容接口**：`/tavily/search` 直接替换，`include_raw_content` 稳定。
 - **缓存**：SQLite TTL 缓存，可离线复用。
 
+## 🎬 效果演示
+
+**技术选型对比** —— 一手事实 + OpenSSF Scorecard 健康分,不只看 star:
+
+```text
+仓库                 star    license       最近提交       健康分   标记
+fastapi/fastapi      99669   MIT           2026-06-25     7.8     -
+django/django        87997   BSD-3-Clause  2026-06-25     6.8     [无 release]
+encode/starlette     12432   BSD-3-Clause  2026-06-19     7.5     -
+```
+
+**搜索自动把官方文档顶上来**(内容农场降权):
+
+```text
+$ agent-search "python asyncio tutorial"
+[1] A Conceptual Overview of asyncio — Python 3 文档   https://docs.python.org/3/howto/...
+[3] asyncio — Asynchronous I/O — Python 3 文档         https://docs.python.org/3/library/asyncio.html
+...
+```
+
 ## 🆚 横向对比
 
 这个细分位没有正面竞品 —— 别家要么是终端产品、要么是单点能力、要么是上层编排。
@@ -50,16 +70,14 @@
 
 ## 🏗️ 架构
 
-```
-Agent / MCP 客户端
-        │  web_search · web_ask · web_extract · web_map · github_search · github_compare
-        ▼
-   Agent Search  (FastAPI / MCP / CLI)
-        ├─ SearXNG（9 引擎，本地 Docker）          → 元搜索 + 重排
-        ├─ trafilatura / Jina / requests / Crawl4AI → 干净抽取
-        ├─ LLM（OpenAI 兼容，如 DeepSeek）          → 带引用 RAG
-        ├─ gh CLI                                    → GitHub 分类型检索
-        └─ deps.dev + OpenSSF Scorecard             → 技术选型
+```mermaid
+flowchart TD
+    A["Agent / MCP 客户端"] -->|"web_search · web_ask · web_extract<br/>web_map · github_search · github_compare"| B["Agent Search<br/>FastAPI · MCP · CLI"]
+    B --> C["SearXNG · 9 引擎<br/>元搜索 + 重排"]
+    B --> D["trafilatura / Jina / requests<br/>(+ Crawl4AI) · 干净抽取"]
+    B --> E["LLM(OpenAI 兼容)<br/>带引用 RAG"]
+    B --> F["gh CLI<br/>GitHub 分类型检索"]
+    B --> G["deps.dev + OpenSSF Scorecard<br/>技术选型"]
 ```
 
 ## 🚀 快速开始

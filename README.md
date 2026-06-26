@@ -34,6 +34,26 @@ Built-in `WebSearch` / `WebFetch` give you links and snippets. Your agent still 
 - **Tavily-compatible API** — drop-in `/tavily/search` with stable `include_raw_content`.
 - **Caching** — SQLite TTL cache; works offline against the cache.
 
+## 🎬 Demo
+
+**Tech-selection comparison** — first-party facts + OpenSSF Scorecard health, never just stars:
+
+```text
+repo                 stars   license       last commit   scorecard   flags
+fastapi/fastapi      99669   MIT           2026-06-25     7.8        -
+django/django        87997   BSD-3-Clause  2026-06-25     6.8        [no release]
+encode/starlette     12432   BSD-3-Clause  2026-06-19     7.5        -
+```
+
+**Search that prefers official docs** (content farms down-ranked automatically):
+
+```text
+$ agent-search "python asyncio tutorial"
+[1] A Conceptual Overview of asyncio — Python 3 docs   https://docs.python.org/3/howto/...
+[3] asyncio — Asynchronous I/O — Python 3 docs         https://docs.python.org/3/library/asyncio.html
+...
+```
+
 ## 🆚 How it compares
 
 No single OSS project covers this niche — most are end-user apps, single-capability tools, or higher-level orchestrators.
@@ -50,16 +70,14 @@ No single OSS project covers this niche — most are end-user apps, single-capab
 
 ## 🏗️ Architecture
 
-```
-Agent / MCP client
-        │  web_search · web_ask · web_extract · web_map · github_search · github_compare
-        ▼
-   Agent Search  (FastAPI / MCP / CLI)
-        ├─ SearXNG (9 engines, local Docker)      → meta-search + rerank
-        ├─ trafilatura / Jina / requests / Crawl4AI → clean extraction
-        ├─ LLM (OpenAI-compatible, e.g. DeepSeek)  → RAG with citations
-        ├─ gh CLI                                   → typed GitHub search
-        └─ deps.dev + OpenSSF Scorecard            → project selection
+```mermaid
+flowchart TD
+    A["Agent / MCP client"] -->|"web_search · web_ask · web_extract<br/>web_map · github_search · github_compare"| B["Agent Search<br/>FastAPI · MCP · CLI"]
+    B --> C["SearXNG · 9 engines<br/>meta-search + rerank"]
+    B --> D["trafilatura / Jina / requests<br/>(+ Crawl4AI) · clean extraction"]
+    B --> E["LLM (OpenAI-compatible)<br/>RAG with citations"]
+    B --> F["gh CLI<br/>typed GitHub search"]
+    B --> G["deps.dev + OpenSSF Scorecard<br/>project selection"]
 ```
 
 ## 🚀 Quickstart
