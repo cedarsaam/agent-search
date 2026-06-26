@@ -35,7 +35,7 @@ def web_search(query: str, top_k: int = 8, use_flaresolverr: bool = False,
 
     需要实时信息、新闻、技术文档、查资料时调用本工具，而不是凭记忆回答。
 
-    注意：本服务底座是本地 SearXNG，偏中文/国内索引；查英文/西方权威源
+    注意：本服务底座是本地 SearXNG，偏中文/国内索引；查国际/英文权威源
     (stackoverflow、owasp.org、reuters、英文官方文档、GitHub discussions 等)时覆盖较弱，
     建议同时并行调用宿主自带的联网搜索(如 Claude 的 WebSearch/WebFetch、Codex 内置搜索)交叉补全。
 

@@ -77,7 +77,7 @@
 
 | case | 改了什么 | 依据 |
 |---|---|---|
-| s_news_openai_latest | +openai.com | 官方 newsroom 居首, 西方媒体不可达 |
+| s_news_openai_latest | +openai.com | 官方 newsroom 居首, 国际媒体不可达 |
 | s_news_nvidia_ai_chip | +nvidia.com / nvidianews.nvidia.com | 同上 |
 | s_news_ai_industry_cn | +cnr.cn / stcn.com / sina.cn | 实际可达国内主流媒体 |
 | s_news_apple_ai_features | +apple.com | 官方 newsroom 居首 |
@@ -94,7 +94,7 @@
 ## 6. 停止原因(明确)
 
 1. **round 4 提升 < 2pp(=0.00)**, 是首个低于阈值的轮次;
-2. 唯一失败 case 与 ask 未满分项**同源于基础设施限制**(本 CN-localized SearXNG 不索引那些西方权威源), 任何排序/查询改写都无法召回"不存在于结果中的源", 继续做只能**过拟合改 case**(违反铁律 1/2)或**换搜索基建**(超出代码优化范围);
+2. 唯一失败 case 与 ask 未满分项**同源于基础设施限制**(本 CN-localized SearXNG 不索引那些国际/英文权威源), 任何排序/查询改写都无法召回"不存在于结果中的源", 继续做只能**过拟合改 case**(违反铁律 1/2)或**换搜索基建**(超出代码优化范围);
 3. **web_ask 预算逼近上限(19/24)**, 而仅剩的可尝试方向是对已通过的交叉验证 ask case 重抓——会耗尽 ask 预算却换不来确定收益(预算铁律 12)。
 
 综上, 已收敛, **在此停止**, 不再"建议再跑一轮"。

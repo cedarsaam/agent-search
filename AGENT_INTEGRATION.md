@@ -30,16 +30,16 @@ claude mcp add agent-search \
 
 > ⚠️ 新增/改动 MCP 配置后需要**重启 Claude 会话**才生效。
 
-### 西方权威源：并行用宿主自带搜索补全
+### 国际/英文权威源：并行用宿主自带搜索补全
 
-本服务底座是本地 SearXNG，偏**中文/国内索引**，对英文/西方权威源（stackoverflow、owasp.org、reuters、英文官方文档、GitHub discussions 等）召回较弱（这是回测里唯一过不去的点）。**最省事的解法不是换搜索基建，而是让 agent 在这类查询上并行用它自身的联网搜索**，两边结果合并取舍：
+本服务底座是本地 SearXNG，偏**中文/国内索引**，对国际/英文权威源（stackoverflow、owasp.org、reuters、英文官方文档、GitHub discussions 等）召回较弱（这是回测里唯一过不去的点）。**最省事的解法不是换搜索基建，而是让 agent 在这类查询上并行用它自身的联网搜索**，两边结果合并取舍：
 
 - **Claude Code / Desktop** → 在 `CLAUDE.md` 加：
-  > 查英文/西方权威源、或 web_search/web_ask 结果明显偏国内站时，同时并行调用 Claude 自带的 `WebSearch` / `WebFetch` 交叉补全。
+  > 查国际/英文权威源、或 web_search/web_ask 结果明显偏国内站时，同时并行调用 Claude 自带的 `WebSearch` / `WebFetch` 交叉补全。
 - **Codex** → 在 `~/.codex/AGENTS.md` 加同样意思的一句，把"Claude 自带 WebSearch/WebFetch"换成"Codex 内置的联网搜索/网页工具"。注意区分二者：MCP 的 `web_search`/`web_ask` 是本服务，Codex 内置搜索是另一套，两边都跑。
-- **Hermes / OpenCode** → 若已关掉内置 web 强制走 agent-search，则保持现状（无西方源时本就以国内源为主）；需要西方源可临时放开其内置 web 工具并行。
+- **Hermes / OpenCode** → 若已关掉内置 web 强制走 agent-search，则保持现状（无国际/英文源时本就以国内源为主）；需要国际/英文源可临时放开其内置 web 工具并行。
 
-原则：**国内/中文用 agent-search，英文/西方权威源并行加一手宿主自带搜索**，互补而非二选一。
+原则：**国内/中文用 agent-search，国际/英文权威源并行加一手宿主自带搜索**，互补而非二选一。
 
 ---
 

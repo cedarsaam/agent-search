@@ -14,7 +14,7 @@
         "techcrunch.com",
         "theverge.com"
       ],
-      "reason": "verify 显示西方科技媒体在本 SearXNG top10 完全不可达; 引擎把 OpenAI 官方 newsroom(openai.com)稳定排在首位, 对'公司最新动态'而言官方源即最权威, 补充为可接受权威源。"
+      "reason": "verify 显示国际/英文科技媒体在本 SearXNG top10 完全不可达; 引擎把 OpenAI 官方 newsroom(openai.com)稳定排在首位, 对'公司最新动态'而言官方源即最权威, 补充为可接受权威源。"
     },
     {
       "id": "s_news_nvidia_ai_chip",
@@ -57,7 +57,7 @@
         "arstechnica.com",
         "theverge.com"
       ],
-      "reason": "verify 显示 apple.com 官方 newsroom 稳定居首, 西方媒体不可达, 补充官方源为权威。"
+      "reason": "verify 显示 apple.com 官方 newsroom 稳定居首, 国际媒体不可达, 补充官方源为权威。"
     }
   ]
 }

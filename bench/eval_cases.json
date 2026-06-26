@@ -17,7 +17,7 @@
     "allow_network": true,
     "requires_flaresolverr": false,
     "requires_deep": false,
-    "notes": "考英文科技新闻检索, 期望命中主流科技媒体对 OpenAI 最新动态的报道 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+    "notes": "考英文科技新闻检索, 期望命中主流科技媒体对 OpenAI 最新动态的报道 [r2:联网核验修正expected_domains-原国际媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
   },
   {
     "id": "s_news_nvidia_ai_chip",
@@ -39,7 +39,7 @@
     "allow_network": true,
     "requires_flaresolverr": false,
     "requires_deep": false,
-    "notes": "考半导体/AI 芯片新闻, 期望命中路透社等权威财经科技媒体 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+    "notes": "考半导体/AI 芯片新闻, 期望命中路透社等权威财经科技媒体 [r2:联网核验修正expected_domains-原国际媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
   },
   {
     "id": "s_news_ai_industry_cn",
@@ -60,7 +60,7 @@
     "allow_network": true,
     "requires_flaresolverr": false,
     "requires_deep": false,
-    "notes": "考中文 AI 行业新闻检索, 期望命中 36 氪等国内主流科技媒体 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+    "notes": "考中文 AI 行业新闻检索, 期望命中 36 氪等国内主流科技媒体 [r2:联网核验修正expected_domains-原国际媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
   },
   {
     "id": "s_news_apple_ai_features",
@@ -81,7 +81,7 @@
     "allow_network": true,
     "requires_flaresolverr": false,
     "requires_deep": false,
-    "notes": "考消费科技 AI 新闻, 期望命中 Ars Technica / The Verge 对 Apple AI 功能的报道 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+    "notes": "考消费科技 AI 新闻, 期望命中 Ars Technica / The Verge 对 Apple AI 功能的报道 [r2:联网核验修正expected_domains-原国际媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
   },
   {
     "id": "s_docs_python_asyncio",

@@ -205,7 +205,7 @@ def openai_tools():
             "type": "function",
             "function": {
                 "name": "web_search",
-                "description": "联网搜索，返回标题/URL/摘要列表。需要实时信息、新闻、文档、技术资料时调用。底座为本地 SearXNG(偏中文/国内源)，查英文/西方权威源(stackoverflow/owasp/reuters/英文官方文档等)覆盖弱，建议并行调用宿主自带的 WebSearch/WebFetch 交叉补全。",
+                "description": "联网搜索，返回标题/URL/摘要列表。需要实时信息、新闻、文档、技术资料时调用。底座为本地 SearXNG(偏中文/国内源)，查国际/英文权威源(stackoverflow/owasp/reuters/英文官方文档等)覆盖弱，建议并行调用宿主自带的 WebSearch/WebFetch 交叉补全。",
                 "parameters": {
                     "type": "object",
                     "properties": {
