@@ -1,5 +1,5 @@
 #!/bin/bash
-# ShadowByte Agent Search Service — 启动/停止/状态管理
+# Agent Search — 启动/停止/状态管理 / start-stop-status helper
 # Usage: ./run.sh [start|stop|restart|status|logs|pull]
 
 set -e
@@ -127,7 +127,7 @@ case "${1:-status}" in
     ;;
   *)
 
-    echo "ShadowByte Agent Search Service"
+    echo "Agent Search"
     echo "================================"
     echo "用法: $0 [start|stop|restart|status|logs|pull|search|ask|bridge]"
     echo ""

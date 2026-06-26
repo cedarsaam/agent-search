@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# ShadowByte's SearXNG Config — Local Agent Search Backend
+# SearXNG config for Agent Search — local agent search backend
 # JSON API enabled at /search?format=json
 use_default_settings: true
 
@@ -19,9 +19,10 @@ search:
     - csv
 
 server:
-  # 占位符：首次部署请改成随机值(openssl rand -hex 32)，或由容器环境变量 SEARXNG_SECRET 覆盖。
-  # Placeholder: replace with a random value (openssl rand -hex 32) or override via the SEARXNG_SECRET env var.
-  secret_key: "CHANGE_ME_OPENSSL_RAND_HEX_32"
+  # 官方镜像会在启动时把 "ultrasecretkey" 替换成环境变量 SEARXNG_SECRET 的值
+  # (docker-compose 已从 .env 的 SEARXNG_SECRET_KEY 注入)。直接跑也能用, 但生产请务必设置。
+  # The official image substitutes "ultrasecretkey" with the SEARXNG_SECRET env var at boot.
+  secret_key: "ultrasecretkey"
   bind_address: "0.0.0.0"
   port: 8080
   limiter: false          # 本地单用户 agent 后端，关闭限流避免误伤自己的调用
@@ -110,10 +111,11 @@ outgoing:
   # Overridden per-engine, but this is the default
   useragent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
   
-  # Proxy settings — Clash Verge 出口 (TUN 模式不覆盖 Docker bridge 网络，需显式配置)
-  # Clash Verge 本地 mixed-port 7897; 容器通过 host.docker.internal 访问宿主机
-  proxies:
-    all://:
-      - http://host.docker.internal:7897
-    https://:
-      - http://host.docker.internal:7897
+  # Optional outbound proxy (e.g. if some engines are blocked in your region).
+  # 可选出站代理(某些引擎在你所在地区被墙时用)。取消注释并改成你自己的代理地址;
+  # 容器内用 host.docker.internal 访问宿主机上的代理端口。默认不启用。
+  # proxies:
+  #   all://:
+  #     - http://host.docker.internal:7890
+  #   https://:
+  #     - http://host.docker.internal:7890

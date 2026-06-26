@@ -73,7 +73,12 @@ docker compose up -d searxng  # add `flaresolverr` only if you need anti-bot han
 **2. Install the Python side:**
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install requests beautifulsoup4 lxml fastapi uvicorn "mcp[cli]" trafilatura
+pip install -r requirements.txt              # core
+pip install -r requirements-optional.txt     # optional: better extraction (trafilatura)
+```
+Or install the CLIs globally with [pipx](https://pipx.pypa.io) / [uv](https://docs.astral.sh/uv/) (from a clone):
+```bash
+pipx install .        # → `agent-search`, `agent-search-mcp`, `agent-search-server`
 ```
 
 **3. Use it** — three ways:

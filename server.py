@@ -313,10 +313,14 @@ def openai_tools():
     ]
 
 
-if __name__ == "__main__":
+def main():
     import os
     import uvicorn
     # 默认只绑本机(127.0.0.1)。要对外暴露请显式设 HOST=0.0.0.0, 并自行加认证/反代。
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8077"))
     uvicorn.run(app, host=host, port=port)
+
+
+if __name__ == "__main__":
+    main()

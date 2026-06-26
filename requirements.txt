@@ -1,0 +1,11 @@
+# 核心依赖 / core dependencies
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+fastapi>=0.110
+uvicorn>=0.27
+pydantic>=2.6
+mcp[cli]>=1.2
+
+# 可选增强(更强抽取/JS 渲染/重排)见 requirements-optional.txt
+# Optional extras (better extraction / JS rendering / rerank): see requirements-optional.txt

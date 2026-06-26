@@ -73,7 +73,12 @@ docker compose up -d searxng  # 需要反爬时再加 `flaresolverr`
 **2. 装 Python 侧：**
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install requests beautifulsoup4 lxml fastapi uvicorn "mcp[cli]" trafilatura
+pip install -r requirements.txt              # 核心
+pip install -r requirements-optional.txt     # 可选：更强抽取(trafilatura)
+```
+或用 [pipx](https://pipx.pypa.io) / [uv](https://docs.astral.sh/uv/) 全局装命令(在 clone 目录里)：
+```bash
+pipx install .        # → `agent-search`、`agent-search-mcp`、`agent-search-server`
 ```
 
 **3. 三种用法：**

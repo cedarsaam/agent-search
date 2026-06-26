@@ -161,5 +161,9 @@ def web_extract(url: str, deep: bool = False) -> dict:
     }
 
 
-if __name__ == "__main__":
+def main():
     mcp.run()  # 默认 stdio 传输
+
+
+if __name__ == "__main__":
+    main()

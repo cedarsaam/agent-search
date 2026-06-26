@@ -11,7 +11,7 @@
     "official_source_rate": 1.0,
     "extraction_quality_rate": 1.0,
     "ask_source_rate": 1.0,
-    "avg_latency_ms": 5.8,
+    "avg_latency_ms": 5.4,
     "type_scores": {
       "search": 87.04,
       "ask": 79.37,
@@ -31,7 +31,7 @@
       "hard_network_limit": 120,
       "hard_ask_limit": 24
     },
-    "wall_ms": 313
+    "wall_ms": 293
   },
   "cases": [
     {
@@ -476,7 +476,7 @@
       "type": "ask",
       "passed": true,
       "score": 0.8571,
-      "latency_ms": 170,
+      "latency_ms": 174,
       "reason": "PASS score=0.8571 | 源域命中 | 术语0.5 | 有excerpt",
       "observed_domains": [
         "claudeapi.com",
@@ -599,7 +599,7 @@
       "type": "ask",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 10,
+      "latency_ms": 11,
       "reason": "PASS score=1.0 | 源域命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
         "repost.aws",
@@ -1286,7 +1286,7 @@
       "type": "map",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 31,
+      "latency_ms": 30,
       "reason": "PASS score=1.0",
       "observed_domains": [
         "react.dev"
@@ -1492,7 +1492,7 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "wiki.python.org",
@@ -1536,7 +1536,7 @@
       "type": "search",
       "passed": true,
       "score": 0.8824,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "reason": "PASS score=0.8824 | 域命中 | 术语0.5 | 权威源✓",
       "observed_domains": [
         "zh.javascript.info",
@@ -1579,7 +1579,7 @@
       "type": "search",
       "passed": false,
       "score": 0.4118,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "reason": "FAIL score=0.4118 | 域未命中 | 术语0.5 | 命中避免域! | 权威源✓",
       "observed_domains": [
         "developer.aliyun.com",
@@ -1622,7 +1622,7 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 3,
+      "latency_ms": 0,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "apifox.com",
@@ -1666,7 +1666,7 @@
       "type": "extract",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 4,
+      "latency_ms": 0,
       "reason": "PASS score=1.0 | 术语1.0 | 正文质量OK",
       "observed_domains": [
         "vitejs.dev"
@@ -1697,7 +1697,7 @@
       "type": "extract",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 6,
+      "latency_ms": 0,
       "reason": "PASS score=1.0 | 术语1.0 | 正文质量OK",
       "observed_domains": [
         "vuejs.org"
@@ -1728,7 +1728,7 @@
       "type": "extract",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "reason": "PASS score=1.0 | 术语1.0 | 正文质量OK",
       "observed_domains": [
         "nextjs.org"
@@ -1759,7 +1759,7 @@
       "type": "search",
       "passed": true,
       "score": 0.9333,
-      "latency_ms": 4,
+      "latency_ms": 0,
       "reason": "PASS score=0.9333 | 域命中 | 术语0.75 | 权威源✓",
       "observed_domains": [
         "docs.python.org",
@@ -1847,7 +1847,7 @@
       "type": "ask",
       "passed": true,
       "score": 0.7143,
-      "latency_ms": 5,
+      "latency_ms": 3,
       "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
         "cloud.tencent.cn",
