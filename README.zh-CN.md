@@ -105,7 +105,7 @@ cp .mcp.json.example .mcp.json   # 填本仓库的绝对路径
 | `github_search` | 分类型 `repos/code/issues/prs` 检索 |
 | `github_compare` | 一手数据技术选型对比（事实 + OpenSSF Scorecard） |
 
-> 💡 **英文/西方权威源**：本地 SearXNG 偏国内/中文索引，对部分西方权威源覆盖较弱。这类查询建议让 agent **并行**调用它自带的 `WebSearch`/`WebFetch` 再合并 —— Agent Search 负责聚合/RAG/GitHub，自带搜索负责补西方源的覆盖。
+> 💡 **覆盖范围取决于你的 SearXNG 实例与所在地区。** 自带配置含一些国内友好的引擎(如豆包)，因此**部署在中国大陆/按 CN 调优**的实例会让中文源排得更靠前、部分国际/英文源更靠后(在别处则相反)。要覆盖更广，可让 agent **并行**调用它自带的 `WebSearch`/`WebFetch` 再合并 —— Agent Search 负责聚合/RAG/GitHub，自带搜索补充覆盖；也可在 `searxng/settings.yml` 增删引擎。
 
 ## ⚠️ 说明与限制
 

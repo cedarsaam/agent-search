@@ -105,7 +105,7 @@ cp .mcp.json.example .mcp.json   # set the absolute path to this repo
 | `github_search` | Typed `repos/code/issues/prs` search |
 | `github_compare` | First-party tech-selection comparison (facts + OpenSSF Scorecard) |
 
-> 💡 **Western/English sources:** the local SearXNG leans toward broad coverage but can be thin on some Western authoritative sources. For those, have your agent run its **native** `WebSearch`/`WebFetch` **in parallel** and merge — Agent Search for aggregation/RAG/GitHub, native search for reach.
+> 💡 **Coverage depends on your SearXNG instance & region.** The bundled config ships some China-friendly engines (e.g. Doubao), so an instance hosted in or tuned for **mainland China** tends to rank Chinese sources higher and some international/English sources lower (and vice-versa elsewhere). For the widest reach, have your agent run its **native** `WebSearch`/`WebFetch` **in parallel** and merge — Agent Search for aggregation/RAG/GitHub, native search for extra reach. You can also add/remove engines in `searxng/settings.yml`.
 
 ## ⚠️ Notes & limitations
 
