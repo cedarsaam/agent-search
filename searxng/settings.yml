@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# ShadowByte's SearXNG Config — Local Agent Search Backend
+# JSON API enabled at /search?format=json
+use_default_settings: true
+
+general:
+  instance_name: "agent-search-service"
+  debug: false
+  privacypolicy_url: false
+  contact_url: false
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: "google"
+  formats:
+    - html
+    - json
+    - csv
+
+server:
+  # 占位符：首次部署请改成随机值(openssl rand -hex 32)，或由容器环境变量 SEARXNG_SECRET 覆盖。
+  # Placeholder: replace with a random value (openssl rand -hex 32) or override via the SEARXNG_SECRET env var.
+  secret_key: "CHANGE_ME_OPENSSL_RAND_HEX_32"
+  bind_address: "0.0.0.0"
+  port: 8080
+  limiter: false          # 本地单用户 agent 后端，关闭限流避免误伤自己的调用
+  public_instance: false
+  image_proxy: false
+  method: "POST"
+
+ui:
+  static_use_hash: true
+  default_theme: simple
+  default_locale: ""
+  search_on_category_select: true
+  query_in_title: true
+  infinite_scroll: false
+
+# Engines we enable for agent search
+engines:
+  # ⛔ 国内 IP 无法使用 — 全部被 CAPTCHA 封锁
+  # 如果有住宅代理请启用，并在 outgoing.proxies 里配置
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: true           # 国内 IP → CAPTCHA
+
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: true           # 国内 IP → 301 重定向到 cn.bing.com
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: true           # 国内 IP → challenge 页面
+
+  # ✅ 不需要代理即可用的搜索引擎
+  - name: brave
+    engine: brave
+    shortcut: bv
+    disabled: false
+    # Brave Search 自有索引，对中文支持好，不触发 CAPTCHA
+
+  - name: startpage
+    engine: startpage
+    shortcut: sp
+    disabled: false
+    # Startpage 通过代理访问 Google，国内 IP 偶尔触发但概率低
+
+  # 火山豆包搜索（自定义 engine，key 走容器环境变量 WEB_SEARCH_API_KEY）
+  - name: doubao
+    engine: doubao
+    shortcut: db
+    disabled: false
+    categories: [general]
+
+  # ✅ 垂直搜索 — 技术类足够
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    disabled: false
+
+  - name: github
+    engine: github
+    shortcut: gh
+    disabled: false
+
+  - name: stackoverflow
+    engine: stackoverflow
+    shortcut: so
+    disabled: false
+
+  - name: reddit
+    engine: reddit
+    shortcut: re
+    disabled: false
+
+  - name: news
+    engine: google_news
+    shortcut: n
+    disabled: false
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+  useragent_suffix: ""
+  # Use a real browser User-Agent to avoid blocks
+  # Overridden per-engine, but this is the default
+  useragent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  
+  # Proxy settings — Clash Verge 出口 (TUN 模式不覆盖 Docker bridge 网络，需显式配置)
+  # Clash Verge 本地 mixed-port 7897; 容器通过 host.docker.internal 访问宿主机
+  proxies:
+    all://:
+      - http://host.docker.internal:7897
+    https://:
+      - http://host.docker.internal:7897

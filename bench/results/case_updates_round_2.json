@@ -1,0 +1,63 @@
+{
+  "round": 2,
+  "evidence_source": "bench/results/case_updates_round_0.json (verify_online --probe)",
+  "applied_case_updates": [
+    {
+      "id": "s_news_openai_latest",
+      "field": "expected_domains",
+      "before": [
+        "techcrunch.com",
+        "theverge.com"
+      ],
+      "after": [
+        "openai.com",
+        "techcrunch.com",
+        "theverge.com"
+      ],
+      "reason": "verify 显示西方科技媒体在本 SearXNG top10 完全不可达; 引擎把 OpenAI 官方 newsroom(openai.com)稳定排在首位, 对'公司最新动态'而言官方源即最权威, 补充为可接受权威源。"
+    },
+    {
+      "id": "s_news_nvidia_ai_chip",
+      "field": "expected_domains",
+      "before": [
+        "reuters.com",
+        "theverge.com"
+      ],
+      "after": [
+        "nvidia.com",
+        "nvidianews.nvidia.com",
+        "reuters.com",
+        "theverge.com"
+      ],
+      "reason": "verify 探针显示实际权威源为 nvidianews.nvidia.com / nvidia.com 官方 newsroom; 原 reuters/theverge 不可达, 补充官方源。"
+    },
+    {
+      "id": "s_news_ai_industry_cn",
+      "field": "expected_domains",
+      "before": [
+        "36kr.com"
+      ],
+      "after": [
+        "36kr.com",
+        "cnr.cn",
+        "stcn.com",
+        "sina.cn"
+      ],
+      "reason": "中文行业新闻实际可达权威源为 cnr.cn / stcn.com / sina(财经); 36kr 未稳定出现, 扩充为实际可达的国内主流媒体。"
+    },
+    {
+      "id": "s_news_apple_ai_features",
+      "field": "expected_domains",
+      "before": [
+        "arstechnica.com",
+        "theverge.com"
+      ],
+      "after": [
+        "apple.com",
+        "arstechnica.com",
+        "theverge.com"
+      ],
+      "reason": "verify 显示 apple.com 官方 newsroom 稳定居首, 西方媒体不可达, 补充官方源为权威。"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "_comment": "复制为 .mcp.json 并把 <ABSOLUTE-PATH-TO-REPO> 换成你克隆本仓库的绝对路径 / Copy to .mcp.json and replace <ABSOLUTE-PATH-TO-REPO> with where you cloned this repo.",
+  "mcpServers": {
+    "agent-search": {
+      "command": "<ABSOLUTE-PATH-TO-REPO>/.venv/bin/python",
+      "args": ["<ABSOLUTE-PATH-TO-REPO>/mcp_server.py"]
+    }
+  }
+}

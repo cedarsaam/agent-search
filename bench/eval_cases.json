@@ -1,0 +1,1042 @@
+[
+  {
+    "id": "s_news_openai_latest",
+    "type": "search",
+    "query": "OpenAI latest announcement",
+    "expected_domains": [
+      "openai.com",
+      "techcrunch.com",
+      "theverge.com"
+    ],
+    "must_include_terms": [
+      "OpenAI"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "news",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考英文科技新闻检索, 期望命中主流科技媒体对 OpenAI 最新动态的报道 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+  },
+  {
+    "id": "s_news_nvidia_ai_chip",
+    "type": "search",
+    "query": "Nvidia AI chip news",
+    "expected_domains": [
+      "nvidia.com",
+      "nvidianews.nvidia.com",
+      "reuters.com",
+      "theverge.com"
+    ],
+    "must_include_terms": [
+      "Nvidia",
+      "AI"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "news",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考半导体/AI 芯片新闻, 期望命中路透社等权威财经科技媒体 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+  },
+  {
+    "id": "s_news_ai_industry_cn",
+    "type": "search",
+    "query": "AI 行业最新新闻",
+    "expected_domains": [
+      "36kr.com",
+      "cnr.cn",
+      "stcn.com",
+      "sina.cn"
+    ],
+    "must_include_terms": [
+      "AI"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "news",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中文 AI 行业新闻检索, 期望命中 36 氪等国内主流科技媒体 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+  },
+  {
+    "id": "s_news_apple_ai_features",
+    "type": "search",
+    "query": "Apple AI features latest news",
+    "expected_domains": [
+      "apple.com",
+      "arstechnica.com",
+      "theverge.com"
+    ],
+    "must_include_terms": [
+      "Apple",
+      "AI"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "news",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考消费科技 AI 新闻, 期望命中 Ars Technica / The Verge 对 Apple AI 功能的报道 [r2:联网核验修正expected_domains-原西方媒体在本SearXNG不可达,改为官方newsroom+实际可达权威源]"
+  },
+  {
+    "id": "s_docs_python_asyncio",
+    "type": "search",
+    "query": "Python asyncio coroutines official documentation",
+    "expected_domains": [
+      "docs.python.org"
+    ],
+    "must_include_terms": [
+      "asyncio",
+      "coroutine",
+      "async"
+    ],
+    "avoid_domains": [
+      "w3schools.com",
+      "geeksforgeeks.org",
+      "runoob.com",
+      "tutorialspoint.com"
+    ],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考能否命中 Python 官方文档 asyncio 页面而非教程农场"
+  },
+  {
+    "id": "s_docs_mdn_fetch",
+    "type": "search",
+    "query": "JavaScript fetch API MDN documentation",
+    "expected_domains": [
+      "developer.mozilla.org"
+    ],
+    "must_include_terms": [
+      "fetch",
+      "Promise",
+      "Response"
+    ],
+    "avoid_domains": [
+      "w3schools.com",
+      "geeksforgeeks.org",
+      "runoob.com",
+      "tutorialspoint.com"
+    ],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 MDN 是否作为 Web API 权威文档命中而非 w3schools"
+  },
+  {
+    "id": "s_docs_react_hooks",
+    "type": "search",
+    "query": "React useEffect hook official docs react.dev",
+    "expected_domains": [
+      "react.dev"
+    ],
+    "must_include_terms": [
+      "useEffect",
+      "hook",
+      "component"
+    ],
+    "avoid_domains": [
+      "w3schools.com",
+      "geeksforgeeks.org",
+      "runoob.com"
+    ],
+    "preferred_source_type": "official",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考能否命中新 React 官网 react.dev 的 useEffect 文档"
+  },
+  {
+    "id": "s_docs_kubernetes_deployment",
+    "type": "search",
+    "query": "Kubernetes Deployment object documentation",
+    "expected_domains": [
+      "kubernetes.io"
+    ],
+    "must_include_terms": [
+      "Deployment",
+      "Pod",
+      "ReplicaSet"
+    ],
+    "avoid_domains": [
+      "geeksforgeeks.org",
+      "runoob.com",
+      "tutorialspoint.com"
+    ],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 K8s 官方文档 Deployment 概念页是否命中"
+  },
+  {
+    "id": "s_docs_go_goroutines",
+    "type": "search",
+    "query": "Go goroutines and channels official documentation go.dev",
+    "expected_domains": [
+      "go.dev"
+    ],
+    "must_include_terms": [
+      "goroutine",
+      "channel",
+      "concurrency"
+    ],
+    "avoid_domains": [
+      "geeksforgeeks.org",
+      "runoob.com",
+      "tutorialspoint.com"
+    ],
+    "preferred_source_type": "official",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 Go 官网 go.dev 关于 goroutine/channel 并发文档是否命中"
+  },
+  {
+    "id": "s_price_openai_api",
+    "type": "search",
+    "query": "OpenAI API pricing per 1M tokens official",
+    "expected_domains": [
+      "openai.com",
+      "platform.openai.com"
+    ],
+    "must_include_terms": [
+      "pricing",
+      "per 1M tokens"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考能否检索到 OpenAI 官方 API 定价页, 用稳定计价单位词而非具体数字"
+  },
+  {
+    "id": "s_price_anthropic_claude",
+    "type": "ask",
+    "query": "Anthropic Claude API 定价是多少, 按每百万 token 怎么算",
+    "expected_domains": [
+      "anthropic.com"
+    ],
+    "must_include_terms": [
+      "pricing",
+      "per 1M tokens"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 RAG 能否从 Anthropic 官网总结 Claude API 定价并给引用, 关键词用稳定计价单位"
+  },
+  {
+    "id": "s_price_azure_openai",
+    "type": "search",
+    "query": "Azure OpenAI Service pricing official Microsoft",
+    "expected_domains": [
+      "azure.microsoft.com"
+    ],
+    "must_include_terms": [
+      "pricing",
+      "Azure OpenAI"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考能否命中 Azure 官方 OpenAI 服务定价页, 避免被第三方文章顶替"
+  },
+  {
+    "id": "s_price_gcp_vertex",
+    "type": "search",
+    "query": "Google Cloud Vertex AI pricing official documentation",
+    "expected_domains": [
+      "cloud.google.com"
+    ],
+    "must_include_terms": [
+      "pricing",
+      "Vertex AI"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考能否检索到 Google Cloud Vertex AI 官方定价/文档页"
+  },
+  {
+    "id": "s_price_aws_bedrock",
+    "type": "ask",
+    "query": "AWS Bedrock 模型推理的定价怎么算, 价格在哪里查",
+    "expected_domains": [
+      "aws.amazon.com"
+    ],
+    "must_include_terms": [
+      "pricing",
+      "Bedrock"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 RAG 能否从 AWS 官网总结 Bedrock 定价并指向官方价格页, 用稳定通用词"
+  },
+  {
+    "id": "g_fastapi_repos",
+    "type": "github",
+    "query": "fastapi python web framework",
+    "kind": "repos",
+    "expected_domains": [
+      "tiangolo/fastapi"
+    ],
+    "must_include_terms": [
+      "FastAPI",
+      "Python"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 github repos 搜索能否定位到知名的 FastAPI 框架仓库"
+  },
+  {
+    "id": "g_pytorch_repos",
+    "type": "github",
+    "query": "pytorch deep learning tensors",
+    "kind": "repos",
+    "expected_domains": [
+      "pytorch/pytorch"
+    ],
+    "must_include_terms": [
+      "PyTorch",
+      "tensor"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 repos 搜索热门深度学习框架 PyTorch 主仓库"
+  },
+  {
+    "id": "g_asyncio_gather_code",
+    "type": "github",
+    "query": "asyncio gather",
+    "kind": "code",
+    "expected_domains": [],
+    "must_include_terms": [
+      "asyncio",
+      "gather"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 github code 搜索能否返回包含 asyncio.gather 用法的源码片段"
+  },
+  {
+    "id": "g_useeffect_cleanup_code",
+    "type": "github",
+    "query": "useEffect cleanup return language:javascript",
+    "kind": "code",
+    "expected_domains": [],
+    "must_include_terms": [
+      "useEffect",
+      "return"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 code 搜索带 language 限定时能否命中 React useEffect 清理函数代码"
+  },
+  {
+    "id": "g_pytorch_memory_leak_issues",
+    "type": "github",
+    "query": "memory leak repo:pytorch/pytorch",
+    "kind": "issues",
+    "expected_domains": [
+      "pytorch/pytorch"
+    ],
+    "must_include_terms": [
+      "memory",
+      "leak"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 issues 搜索能否在指定 pytorch 仓库内定位内存泄漏相关 issue"
+  },
+  {
+    "id": "g_django_prs",
+    "type": "github",
+    "query": "fix repo:django/django",
+    "kind": "prs",
+    "expected_domains": [
+      "django/django"
+    ],
+    "must_include_terms": [
+      "Django"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 prs 搜索能否在 django 仓库内返回 pull request 结果"
+  },
+  {
+    "id": "s_zh_list_comprehension",
+    "type": "search",
+    "query": "Python 列表推导式 用法",
+    "expected_domains": [
+      "docs.python.org",
+      "runoob.com"
+    ],
+    "must_include_terms": [
+      "列表推导式",
+      "Python"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中文编程语法查询能否命中官方中文文档或主流中文教程站"
+  },
+  {
+    "id": "s_zh_kubernetes_intro",
+    "type": "search",
+    "query": "Kubernetes 是什么 容器编排",
+    "expected_domains": [
+      "kubernetes.io",
+      "zh.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "Kubernetes",
+      "容器编排"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中文概念性查询能否命中官方中文文档与维基中文条目"
+  },
+  {
+    "id": "s_zh_http_status_codes",
+    "type": "search",
+    "query": "HTTP 状态码 404 含义",
+    "expected_domains": [
+      "developer.mozilla.org",
+      "zh.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "状态码",
+      "404"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中文 Web 基础知识查询能否命中 MDN 中文与维基中文权威解释"
+  },
+  {
+    "id": "s_zh_git_rebase_vs_merge",
+    "type": "search",
+    "query": "Git rebase 和 merge 的区别",
+    "expected_domains": [
+      "git-scm.com",
+      "zh.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "rebase",
+      "merge",
+      "分支"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中文工具对比类查询能否命中 Git 官方文档与权威中文资料"
+  },
+  {
+    "id": "x_wikipedia_python",
+    "type": "extract",
+    "url": "https://en.wikipedia.org/wiki/Python_(programming_language)",
+    "expected_domains": [
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "Python",
+      "Guido van Rossum",
+      "programming language"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考维基百科条目正文抽取, 验证稳定历史事实关键词"
+  },
+  {
+    "id": "x_mdn_fetch",
+    "type": "extract",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API",
+    "expected_domains": [
+      "developer.mozilla.org"
+    ],
+    "must_include_terms": [
+      "Fetch API",
+      "request",
+      "Promise"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 MDN Web 文档页正文抽取, 验证 Fetch API 核心概念词"
+  },
+  {
+    "id": "x_pydocs_functions",
+    "type": "extract",
+    "url": "https://docs.python.org/3/library/functions.html",
+    "expected_domains": [
+      "docs.python.org"
+    ],
+    "must_include_terms": [
+      "Built-in Functions",
+      "len",
+      "range"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 Python 官方文档页(内置函数表)抽取, 验证函数名等稳定词"
+  },
+  {
+    "id": "x_wikipedia_http_status_table",
+    "type": "extract",
+    "url": "https://en.wikipedia.org/wiki/List_of_HTTP_status_codes",
+    "expected_domains": [
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "404",
+      "Not Found",
+      "200",
+      "OK"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考带大量表格的页面(HTTP 状态码列表)抽取, 验证表格内稳定条目"
+  },
+  {
+    "id": "x_readme_requests",
+    "type": "extract",
+    "url": "https://raw.githubusercontent.com/psf/requests/main/README.md",
+    "expected_domains": [
+      "raw.githubusercontent.com"
+    ],
+    "must_include_terms": [
+      "Requests",
+      "HTTP",
+      "Python"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 raw GitHub README 抽取, 验证项目名与核心描述词"
+  },
+  {
+    "id": "x_blog_gil_faq",
+    "type": "extract",
+    "url": "https://wiki.python.org/moin/GlobalInterpreterLock",
+    "expected_domains": [
+      "wiki.python.org"
+    ],
+    "must_include_terms": [
+      "Global Interpreter Lock",
+      "GIL",
+      "thread"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考站点 wiki/正文页面抽取(GIL 说明), 验证主题稳定术语"
+  },
+  {
+    "id": "a_snip_python_creator",
+    "type": "ask",
+    "query": "Who created the Python programming language?",
+    "expected_domains": [
+      "python.org",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "Guido van Rossum",
+      "Python"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考事实性短答案(Python 创始人), 即使正文抓取失败也能靠搜索 snippet 兜底答出"
+  },
+  {
+    "id": "a_snip_react_purpose",
+    "type": "ask",
+    "query": "What is React used for in web development?",
+    "expected_domains": [
+      "react.dev",
+      "reactjs.org",
+      "developer.mozilla.org"
+    ],
+    "must_include_terms": [
+      "React",
+      "UI",
+      "JavaScript"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考框架用途短答案(React 是构建 UI 的 JS 库), snippet 即可覆盖核心定义 [r3:联网核验修正-DeepSeek中文作答,terms改语言稳定;expected补充实际返回的权威源reactjs.org/mdn]"
+  },
+  {
+    "id": "a_snip_linux_creator",
+    "type": "ask",
+    "query": "Who created the Linux kernel?",
+    "expected_domains": [
+      "kernel.org",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "Linus Torvalds",
+      "Linux",
+      "kernel"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考事实性短答案(Linux 内核创始人), 稳定事实词不依赖正文抓取, snippet 兜底"
+  },
+  {
+    "id": "m_fastapi_docs",
+    "type": "map",
+    "url": "https://fastapi.tiangolo.com/",
+    "expected_domains": [
+      "fastapi.tiangolo.com"
+    ],
+    "must_include_terms": [],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 FastAPI 文档站 sitemap.xml 发现同域文档链接"
+  },
+  {
+    "id": "m_react_dev",
+    "type": "map",
+    "url": "https://react.dev/",
+    "expected_domains": [
+      "react.dev"
+    ],
+    "must_include_terms": [],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 React 官网通过 sitemap/同域链接发现 learn/reference 等子页"
+  },
+  {
+    "id": "m_python_docs",
+    "type": "map",
+    "url": "https://docs.python.org/3/",
+    "expected_domains": [
+      "docs.python.org"
+    ],
+    "must_include_terms": [],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 Python 官方文档站点同域链接发现(library/tutorial 等)"
+  },
+  {
+    "id": "m_mdn_web_docs",
+    "type": "map",
+    "url": "https://developer.mozilla.org/en-US/",
+    "expected_domains": [
+      "developer.mozilla.org"
+    ],
+    "must_include_terms": [],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 MDN 文档站 sitemap 与同域 Web 技术文档链接发现"
+  },
+  {
+    "id": "a_cross_rest_vs_graphql",
+    "type": "ask",
+    "query": "REST 和 GraphQL API 的区别、各自优缺点和适用场景对比",
+    "expected_domains": [
+      "graphql.org",
+      "developer.mozilla.org",
+      "aws.amazon.com"
+    ],
+    "must_include_terms": [
+      "GraphQL",
+      "REST",
+      "over-fetching"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考综合多个权威来源对比 REST 与 GraphQL 概念与权衡, answer 须给出 over-fetching 等稳定概念且 sources 可追溯到官方/MDN"
+  },
+  {
+    "id": "a_cross_jwt_session_auth",
+    "type": "ask",
+    "query": "Web 应用身份认证用 JWT 还是 session cookie 更好, 安全性最佳实践对比",
+    "expected_domains": [
+      "owasp.org",
+      "auth0.com",
+      "developer.mozilla.org"
+    ],
+    "must_include_terms": [
+      "JWT",
+      "session",
+      "token"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考多源综合 JWT 与 session 认证的最佳实践与安全权衡, 答案须引用 OWASP/MDN 等权威 sources 可追溯"
+  },
+  {
+    "id": "a_cross_acid_vs_base",
+    "type": "ask",
+    "query": "数据库 ACID 与 BASE 模型的区别, 以及 CAP 定理的关系解释",
+    "expected_domains": [
+      "en.wikipedia.org",
+      "aws.amazon.com",
+      "ibm.com"
+    ],
+    "must_include_terms": [
+      "ACID",
+      "consistency",
+      "CAP"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考多源综合解释 ACID/BASE 与 CAP 定理的概念关系, 答案须含稳定概念词且 sources 追溯到维基/厂商技术文档"
+  },
+  {
+    "id": "s_seo_learn_python_fast",
+    "type": "search",
+    "query": "how to learn python fast for beginners",
+    "expected_domains": [
+      "docs.python.org",
+      "python.org"
+    ],
+    "must_include_terms": [
+      "Python",
+      "tutorial"
+    ],
+    "avoid_domains": [
+      "w3schools.com",
+      "geeksforgeeks.org",
+      "simplilearn.com",
+      "guru99.com",
+      "runoob.com",
+      "csdn.net"
+    ],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考内容农场规避: 学 Python 是被 SEO 站重度污染的词, 应优先官方 docs.python.org 教程而非 w3schools/runoob/csdn"
+  },
+  {
+    "id": "s_seo_javascript_tutorial",
+    "type": "search",
+    "query": "javascript tutorial for beginners",
+    "expected_domains": [
+      "developer.mozilla.org"
+    ],
+    "must_include_terms": [
+      "JavaScript",
+      "tutorial"
+    ],
+    "avoid_domains": [
+      "w3schools.com",
+      "geeksforgeeks.org",
+      "tutorialspoint.com",
+      "javatpoint.com",
+      "guru99.com",
+      "runoob.com"
+    ],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考 JS 教程查询优先权威 MDN, 规避 w3schools/tutorialspoint/javatpoint 等典型 SEO 内容农场"
+  },
+  {
+    "id": "s_seo_best_programming_language",
+    "type": "search",
+    "query": "best programming language to learn 2026",
+    "expected_domains": [
+      "stackoverflow.blog",
+      "github.blog"
+    ],
+    "must_include_terms": [
+      "programming language",
+      "developer"
+    ],
+    "avoid_domains": [
+      "simplilearn.com",
+      "guru99.com",
+      "geeksforgeeks.org",
+      "hackr.io",
+      "medium.com",
+      "csdn.net"
+    ],
+    "preferred_source_type": "official",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考榜单类查询规避内容农场, 优先 Stack Overflow 调查/GitHub Octoverse 等一手数据源而非 simplilearn/hackr 列表文"
+  },
+  {
+    "id": "s_seo_what_is_rest_api",
+    "type": "search",
+    "query": "what is a rest api explained",
+    "expected_domains": [
+      "developer.mozilla.org"
+    ],
+    "must_include_terms": [
+      "REST",
+      "HTTP"
+    ],
+    "avoid_domains": [
+      "geeksforgeeks.org",
+      "tutorialspoint.com",
+      "javatpoint.com",
+      "guru99.com",
+      "simplilearn.com",
+      "medium.com"
+    ],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考概念解释类查询优先 MDN 权威文档, 规避 geeksforgeeks/tutorialspoint/javatpoint 等 SEO 解释站"
+  },
+  {
+    "id": "x_js_vite_guide",
+    "type": "extract",
+    "url": "https://vitejs.dev/guide/",
+    "expected_domains": [
+      "vitejs.dev"
+    ],
+    "must_include_terms": [
+      "Vite",
+      "dev server",
+      "build"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考从 Vite 文档(JS 构建站)抽取正文,验证清洗后能拿到 dev server/build 等稳定描述词"
+  },
+  {
+    "id": "x_js_vue_intro",
+    "type": "extract",
+    "url": "https://vuejs.org/guide/introduction.html",
+    "expected_domains": [
+      "vuejs.org"
+    ],
+    "must_include_terms": [
+      "Vue",
+      "framework",
+      "component"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考从 Vue.js 介绍页(SPA 文档站)抽取正文,验证去除导航/侧边栏噪声后保留框架介绍稳定词"
+  },
+  {
+    "id": "x_js_nextjs_docs",
+    "type": "extract",
+    "url": "https://nextjs.org/docs",
+    "expected_domains": [
+      "nextjs.org"
+    ],
+    "must_include_terms": [
+      "Next.js",
+      "React",
+      "App Router"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考从 Next.js 文档首页(React 框架站, JS 噪声大)抽取正文,验证能提取 React/App Router 等稳定关键词"
+  },
+  {
+    "id": "s_mix_python_asyncio_tutorial",
+    "type": "search",
+    "query": "Python asyncio 协程 异步编程 教程",
+    "expected_domains": [
+      "docs.python.org",
+      "realpython.com"
+    ],
+    "must_include_terms": [
+      "asyncio",
+      "async",
+      "await",
+      "coroutine"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中英混合的 Python 异步编程查询能否命中官方文档与权威教程"
+  },
+  {
+    "id": "s_mix_react_hooks_best_practice",
+    "type": "search",
+    "query": "React hooks 最佳实践 useEffect useState",
+    "expected_domains": [
+      "react.dev"
+    ],
+    "must_include_terms": [
+      "hook",
+      "useEffect",
+      "useState"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 8000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中英混合的 React Hooks 查询能否命中官方文档 react.dev"
+  },
+  {
+    "id": "s_mix_k8s_pod_what_is",
+    "type": "ask",
+    "query": "Kubernetes pod 是什么? 和容器有什么区别",
+    "expected_domains": [
+      "kubernetes.io"
+    ],
+    "must_include_terms": [
+      "Pod",
+      "container",
+      "Kubernetes"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "official",
+    "max_latency_ms": 30000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "考中英混合概念问答(ask+RAG)能否引用 Kubernetes 官方文档并解释 Pod 与容器关系"
+  }
+]

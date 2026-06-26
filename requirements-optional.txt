@@ -1,0 +1,13 @@
+# 可选增强依赖；基础服务不依赖这些包，安装后会自动启用对应能力。
+
+# 更强的正文抽取：主内容识别、去导航/广告、保留表格/链接。
+trafilatura>=2.1.0
+
+# 可选本地重排器。当前代码先使用轻量规则重排；接入 FlashRank 时可用作二阶段 rerank。
+# flashrank>=0.2.10
+
+# 可选 JS 渲染/深度抓取(免费, 本地跑)。代码已按现行 AsyncWebCrawler API 接好:
+#   装了之后, --deep / deep=True / requires_deep 会优先用 crawl4ai, 失败或没装则自动回退普通抽取链。
+# 默认不装(会额外下载 Playwright 浏览器, 体积大); 真要处理 JS 重的页面时再:
+#   pip install "crawl4ai>=0.9.0" && python -m playwright install chromium
+# crawl4ai>=0.9.0

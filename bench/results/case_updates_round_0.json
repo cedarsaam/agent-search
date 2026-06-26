@@ -1,0 +1,2217 @@
+{
+  "round": 0,
+  "verified_count": 23,
+  "budget": {
+    "run_network": 14,
+    "run_ask": 0,
+    "cum_network": 27,
+    "cum_ask": 6,
+    "internal_http_fetches": 14,
+    "hard_network_limit": 120,
+    "hard_ask_limit": 24
+  },
+  "recommended_case_updates": [
+    {
+      "id": "s_news_openai_latest",
+      "type": "search",
+      "query": "OpenAI latest announcement",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "openai.com",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "openai.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "news.qq.com",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "m.techweb.com.cn",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "cj.sina.cn",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "openai.com",
+          "openai.com",
+          "news.qq.com",
+          "m.thepaper.cn",
+          "m.techweb.com.cn",
+          "cj.sina.cn",
+          "36kr.com",
+          "soft.china.com"
+        ],
+        "probe": {
+          "probe_query": "OpenAI latest announcement news",
+          "authoritative": [
+            {
+              "domain": "openai.com",
+              "rank": 1,
+              "type": "official"
+            },
+            {
+              "domain": "news.qq.com",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "finance.zzsz.net.cn",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "m.sohu.com",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "openai.com",
+            "news.qq.com",
+            "m.thepaper.cn",
+            "finance.zzsz.net.cn",
+            "m.sohu.com"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['news.qq.com', 'openai.com']",
+            "evidence": [
+              {
+                "domain": "openai.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "openai.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "news.qq.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "m.techweb.com.cn",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "cj.sina.cn",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['finance.zzsz.net.cn', 'm.sohu.com', 'news.qq.com', 'openai.com']",
+            "evidence": [
+              {
+                "domain": "openai.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "news.qq.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "finance.zzsz.net.cn",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "m.sohu.com",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_news_nvidia_ai_chip",
+      "type": "search",
+      "query": "Nvidia AI chip news",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "nvidianews.nvidia.com",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "nvidianews.nvidia.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "nvidianews.nvidia.com",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "news.qq.com",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "blogs.nvidia.cn",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "nvidia.com",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "nvidianews.nvidia.com",
+          "nvidianews.nvidia.com",
+          "nvidianews.nvidia.com",
+          "news.qq.com",
+          "blogs.nvidia.cn",
+          "nvidia.com",
+          "blogs.nvidia.com",
+          "vip.stock.finance.sina.com.cn"
+        ],
+        "probe": {
+          "probe_query": "Nvidia AI chip news news",
+          "authoritative": [
+            {
+              "domain": "nvidianews.nvidia.com",
+              "rank": 1,
+              "type": "official"
+            },
+            {
+              "domain": "nvidianews.nvidia.com",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "nvidianews.nvidia.com",
+              "rank": 3,
+              "type": "official"
+            },
+            {
+              "domain": "news.qq.com",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "blogs.nvidia.cn",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "nvidianews.nvidia.com",
+            "nvidianews.nvidia.com",
+            "nvidianews.nvidia.com",
+            "news.qq.com",
+            "blogs.nvidia.cn"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['nvidianews.nvidia.com']",
+            "evidence": [
+              {
+                "domain": "nvidianews.nvidia.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "nvidianews.nvidia.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "nvidianews.nvidia.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "news.qq.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "blogs.nvidia.cn",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "nvidia.com",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['blogs.nvidia.cn', 'news.qq.com', 'nvidianews.nvidia.com']",
+            "evidence": [
+              {
+                "domain": "nvidianews.nvidia.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "nvidianews.nvidia.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "nvidianews.nvidia.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "news.qq.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "blogs.nvidia.cn",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_news_ai_industry_cn",
+      "type": "search",
+      "query": "AI 行业最新新闻",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "stcn.com",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "finance.sina.cn",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "cnr.cn",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "m.bjnews.com.cn",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "news.cnr.cn",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "3g.china.com",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "stcn.com",
+          "finance.sina.cn",
+          "cnr.cn",
+          "m.bjnews.com.cn",
+          "news.cnr.cn",
+          "3g.china.com",
+          "news.cnr.cn",
+          "www3.xinhuanet.com"
+        ],
+        "probe": {
+          "probe_query": "AI 行业最新新闻 news",
+          "authoritative": [
+            {
+              "domain": "m.bjnews.com.cn",
+              "rank": 1,
+              "type": "official"
+            },
+            {
+              "domain": "stcn.com",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "finance.sina.cn",
+              "rank": 3,
+              "type": "official"
+            },
+            {
+              "domain": "news.cnr.cn",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "cnr.cn",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "m.bjnews.com.cn",
+            "stcn.com",
+            "finance.sina.cn",
+            "news.cnr.cn",
+            "cnr.cn"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['cnr.cn', 'finance.sina.cn', 'stcn.com']",
+            "evidence": [
+              {
+                "domain": "stcn.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "finance.sina.cn",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "cnr.cn",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "m.bjnews.com.cn",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "news.cnr.cn",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "3g.china.com",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['cnr.cn', 'finance.sina.cn', 'm.bjnews.com.cn', 'news.cnr.cn', 'stcn.com']",
+            "evidence": [
+              {
+                "domain": "m.bjnews.com.cn",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "stcn.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "finance.sina.cn",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "news.cnr.cn",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "cnr.cn",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_news_apple_ai_features",
+      "type": "search",
+      "query": "Apple AI features latest news",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "apple.com",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "images.apple.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "images.apple.com",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "apple.com",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "news.qq.com",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "images.apple.com",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "apple.com",
+          "images.apple.com",
+          "images.apple.com",
+          "apple.com",
+          "news.qq.com",
+          "images.apple.com",
+          "k.sina.cn",
+          "m.sohu.com"
+        ],
+        "probe": {
+          "probe_query": "Apple AI features latest news news",
+          "authoritative": [
+            {
+              "domain": "apple.com",
+              "rank": 1,
+              "type": "official"
+            },
+            {
+              "domain": "images.apple.com",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "images.apple.com",
+              "rank": 3,
+              "type": "official"
+            },
+            {
+              "domain": "apple.com",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "news.qq.com",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "apple.com",
+            "images.apple.com",
+            "images.apple.com",
+            "apple.com",
+            "news.qq.com"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['apple.com', 'images.apple.com']",
+            "evidence": [
+              {
+                "domain": "apple.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "images.apple.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "images.apple.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "apple.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "news.qq.com",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "images.apple.com",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['apple.com', 'images.apple.com', 'news.qq.com']",
+            "evidence": [
+              {
+                "domain": "apple.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "images.apple.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "images.apple.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "apple.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "news.qq.com",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_price_gcp_vertex",
+      "type": "search",
+      "query": "Google Cloud Vertex AI pricing official documentation",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "ai.google.dev",
+            "rank": 1,
+            "type": "docs"
+          },
+          {
+            "domain": "cloudzero.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "deploybase.ai",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "deploybase.ai",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "googleapis.dev",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "modern-datatools.com",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "ai.google.dev",
+          "cloudzero.com",
+          "deploybase.ai",
+          "deploybase.ai",
+          "googleapis.dev",
+          "modern-datatools.com",
+          "futureagi.com",
+          "ai.google.dev"
+        ],
+        "probe": {
+          "probe_query": "Google Cloud Vertex AI pricing official documentation official documentation",
+          "authoritative": [
+            {
+              "domain": "deploybase.ai",
+              "rank": 1,
+              "type": "official"
+            },
+            {
+              "domain": "cloudzero.com",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "deploybase.ai",
+              "rank": 3,
+              "type": "official"
+            },
+            {
+              "domain": "discuss.google.dev",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "googleapis.dev",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "deploybase.ai",
+            "cloudzero.com",
+            "deploybase.ai",
+            "discuss.google.dev",
+            "googleapis.dev"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['ai.google.dev', 'cloudzero.com', 'deploybase.ai']",
+            "evidence": [
+              {
+                "domain": "ai.google.dev",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "cloudzero.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "deploybase.ai",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "deploybase.ai",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "googleapis.dev",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "modern-datatools.com",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['cloudzero.com', 'deploybase.ai', 'discuss.google.dev', 'googleapis.dev']",
+            "evidence": [
+              {
+                "domain": "deploybase.ai",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "cloudzero.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "deploybase.ai",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "discuss.google.dev",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "googleapis.dev",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_zh_http_status_codes",
+      "type": "search",
+      "query": "HTTP 状态码 404 含义",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "wiki-guessr.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "m.baike.com",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "baike.com",
+            "rank": 5,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "rk.51cto.com",
+          "wiki-guessr.com",
+          "wenku.csdn.net",
+          "m.baike.com",
+          "baike.com",
+          "blog.csdn.net",
+          "blog.csdn.net",
+          "m.php.cn"
+        ],
+        "probe": {
+          "probe_query": "HTTP 状态码 404 含义 official documentation",
+          "authoritative": [
+            {
+              "domain": "jishuzhan.net",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "wiki-guessr.com",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "help.aliyun.com",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "rk.51cto.com",
+            "jishuzhan.net",
+            "blog.csdn.net",
+            "wiki-guessr.com",
+            "help.aliyun.com"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['wiki-guessr.com']",
+            "evidence": [
+              {
+                "domain": "wiki-guessr.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "m.baike.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "baike.com",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['help.aliyun.com', 'jishuzhan.net', 'wiki-guessr.com']",
+            "evidence": [
+              {
+                "domain": "jishuzhan.net",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "wiki-guessr.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "help.aliyun.com",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_zh_git_rebase_vs_merge",
+      "type": "search",
+      "query": "Git rebase 和 merge 的区别",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "css-tricks.com",
+            "rank": 1,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "css-tricks.com",
+          "ask.csdn.net",
+          "ask.csdn.net",
+          "blog.csdn.net",
+          "wenku.csdn.net",
+          "wenku.csdn.net",
+          "download.csdn.net",
+          "45256.com"
+        ],
+        "probe": {
+          "probe_query": "Git rebase 和 merge 的区别 official documentation",
+          "authoritative": [
+            {
+              "domain": "css-tricks.com",
+              "rank": 1,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "css-tricks.com",
+            "juejin.cn",
+            "ask.csdn.net",
+            "wenku.csdn.net",
+            "blog.csdn.net"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['css-tricks.com']",
+            "evidence": [
+              {
+                "domain": "css-tricks.com",
+                "rank": 1,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['css-tricks.com']",
+            "evidence": [
+              {
+                "domain": "css-tricks.com",
+                "rank": 1,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "x_wikipedia_python",
+      "type": "extract",
+      "query": null,
+      "url": "https://en.wikipedia.org/wiki/Python_(programming_language)",
+      "confidence": "high",
+      "findings": {
+        "md_len": 0,
+        "quality_ok": false,
+        "method": "failed",
+        "must_terms_frac": 0.0,
+        "recommendations": [
+          {
+            "field": "url",
+            "issue": "抽取失败/空正文 (method=failed, err=All methods failed)",
+            "suggestion": "URL 可能失效或强 JS 渲染, 建议更换稳定 URL 或标记 requires_deep",
+            "evidence": {}
+          },
+          {
+            "field": "must_include_terms",
+            "issue": "正文中 must_terms 命中率低(0.0), 缺 ['Python', 'Guido van Rossum', 'programming language']",
+            "suggestion": "词可能过时或不在该页, 建议核对页面实际内容后更新",
+            "evidence": {
+              "matched": []
+            }
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "a_snip_react_purpose",
+      "type": "ask",
+      "query": "What is React used for in web development?",
+      "url": null,
+      "confidence": "medium",
+      "findings": {
+        "present_expected": [
+          "react.dev"
+        ],
+        "authoritative_top": [
+          {
+            "domain": "topcoder.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "zh-hans.react.dev",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "developer.mozilla.org",
+            "rank": 4,
+            "type": "docs"
+          },
+          {
+            "domain": "blog.gitcode.com",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "sh.zx.zbj.com",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 0.33,
+        "missing_terms": [
+          "user interface",
+          "library"
+        ],
+        "observed_domains": [
+          "juejin.cn",
+          "topcoder.com",
+          "zh-hans.react.dev",
+          "developer.mozilla.org",
+          "blog.gitcode.com",
+          "sh.zx.zbj.com",
+          "blog.csdn.net",
+          "developer.aliyun.com"
+        ],
+        "probe": null,
+        "recommendations": [
+          {
+            "field": "must_include_terms",
+            "issue": "must_include_terms 命中率低(0.33), 缺失 ['user interface', 'library']",
+            "suggestion": "这些词可能过时或过于具体, 建议换成更稳定的词",
+            "evidence": {
+              "matched": [
+                "JavaScript"
+              ],
+              "missing": [
+                "user interface",
+                "library"
+              ]
+            }
+          }
+        ],
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "a_snip_linux_creator",
+      "type": "ask",
+      "query": "Who created the Linux kernel?",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "linux.com",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "handwiki.org",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "developer.aliyun.com",
+            "rank": 3,
+            "type": "docs"
+          },
+          {
+            "domain": "baike.baidu.hk",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "timeline.kde.org",
+            "rank": 5,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "linux.com",
+          "handwiki.org",
+          "developer.aliyun.com",
+          "baike.baidu.hk",
+          "timeline.kde.org",
+          "blog.csdn.net",
+          "computerhistory.org",
+          "codehelp-linus-torvalds-tribute.netlify.app"
+        ],
+        "probe": null,
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['developer.aliyun.com', 'handwiki.org', 'linux.com']",
+            "evidence": [
+              {
+                "domain": "linux.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "handwiki.org",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "developer.aliyun.com",
+                "rank": 3,
+                "type": "docs"
+              },
+              {
+                "domain": "baike.baidu.hk",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "timeline.kde.org",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "a_cross_jwt_session_auth",
+      "type": "ask",
+      "query": "Web 应用身份认证用 JWT 还是 session cookie 更好, 安全性最佳实践对比",
+      "url": null,
+      "confidence": "medium",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "m.php.cn",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "wenku.csdn.net",
+          "juejin.cn",
+          "blog.csdn.net",
+          "wenku.csdn.net",
+          "blog.csdn.net",
+          "m.php.cn",
+          "developer.aliyun.com:443",
+          "ask.csdn.net"
+        ],
+        "probe": null,
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 未出现, 且 top 区无明显权威源",
+            "suggestion": "可能 query 表述需调整, 或放宽 preferred_source_type",
+            "evidence": [
+              {
+                "domain": "wenku.csdn.net",
+                "rank": 1
+              },
+              {
+                "domain": "juejin.cn",
+                "rank": 2
+              },
+              {
+                "domain": "blog.csdn.net",
+                "rank": 3
+              },
+              {
+                "domain": "wenku.csdn.net",
+                "rank": 4
+              },
+              {
+                "domain": "blog.csdn.net",
+                "rank": 5
+              }
+            ]
+          }
+        ],
+        "confidence": "medium"
+      }
+    },
+    {
+      "id": "a_cross_acid_vs_base",
+      "type": "ask",
+      "query": "数据库 ACID 与 BASE 模型的区别, 以及 CAP 定理的关系解释",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "yisu.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "neo4j.com.cn",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "cloud.tencent.com",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "developer.aliyun.com:443",
+            "rank": 6,
+            "type": "docs"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "blog.csdn.net",
+          "yisu.com",
+          "neo4j.com.cn",
+          "wenku.csdn.net",
+          "cloud.tencent.com",
+          "developer.aliyun.com:443",
+          "m.yisu.com",
+          "juejin.cn"
+        ],
+        "probe": null,
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['neo4j.com.cn', 'yisu.com']",
+            "evidence": [
+              {
+                "domain": "yisu.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "neo4j.com.cn",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "cloud.tencent.com",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "developer.aliyun.com:443",
+                "rank": 6,
+                "type": "docs"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_seo_learn_python_fast",
+      "type": "search",
+      "query": "how to learn python fast for beginners",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "m.toutiao.com",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "m.sohu.com",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "volcengine.com",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 0.5,
+        "missing_terms": [
+          "tutorial"
+        ],
+        "observed_domains": [
+          "m.toutiao.com",
+          "blog.csdn.net",
+          "m.sohu.com",
+          "wenku.csdn.net",
+          "blog.51cto.com",
+          "volcengine.com",
+          "blog.csdn.net",
+          "developer.aliyun.com"
+        ],
+        "probe": {
+          "probe_query": "how to learn python fast for beginners official documentation",
+          "authoritative": [
+            {
+              "domain": "wiki.python.org",
+              "rank": 1,
+              "type": "docs"
+            },
+            {
+              "domain": "wiki.python.org",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "m.php.cn",
+              "rank": 3,
+              "type": "official"
+            },
+            {
+              "domain": "oryoy.com",
+              "rank": 4,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "wiki.python.org",
+            "wiki.python.org",
+            "m.php.cn",
+            "oryoy.com",
+            "51cto.com"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['m.sohu.com', 'm.toutiao.com']",
+            "evidence": [
+              {
+                "domain": "m.toutiao.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "m.sohu.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "volcengine.com",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['m.php.cn', 'oryoy.com', 'wiki.python.org']",
+            "evidence": [
+              {
+                "domain": "wiki.python.org",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "wiki.python.org",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "m.php.cn",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "oryoy.com",
+                "rank": 4,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_seo_javascript_tutorial",
+      "type": "search",
+      "query": "javascript tutorial for beginners",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "zh.javascript.info",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "higher.smartedu.cn",
+            "rank": 5,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 0.5,
+        "missing_terms": [
+          "tutorial"
+        ],
+        "observed_domains": [
+          "zh.javascript.info",
+          "blog.51cto.com",
+          "juejin.cn",
+          "blog.csdn.net",
+          "higher.smartedu.cn",
+          "blog.csdn.net",
+          "blog.51cto.com",
+          "edu.51cto.com"
+        ],
+        "probe": {
+          "probe_query": "javascript tutorial for beginners official documentation",
+          "authoritative": [
+            {
+              "domain": "developer.mozilla.org",
+              "rank": 1,
+              "type": "docs"
+            },
+            {
+              "domain": "developer.mozilla.org",
+              "rank": 2,
+              "type": "docs"
+            },
+            {
+              "domain": "developer.mozilla.org",
+              "rank": 3,
+              "type": "docs"
+            },
+            {
+              "domain": "higher.smartedu.cn",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "developer.mozilla.org",
+              "rank": 5,
+              "type": "docs"
+            }
+          ],
+          "top_domains": [
+            "developer.mozilla.org",
+            "developer.mozilla.org",
+            "developer.mozilla.org",
+            "higher.smartedu.cn",
+            "developer.mozilla.org"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['zh.javascript.info']",
+            "evidence": [
+              {
+                "domain": "zh.javascript.info",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "higher.smartedu.cn",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['developer.mozilla.org', 'higher.smartedu.cn']",
+            "evidence": [
+              {
+                "domain": "developer.mozilla.org",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "developer.mozilla.org",
+                "rank": 2,
+                "type": "docs"
+              },
+              {
+                "domain": "developer.mozilla.org",
+                "rank": 3,
+                "type": "docs"
+              },
+              {
+                "domain": "higher.smartedu.cn",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "developer.mozilla.org",
+                "rank": 5,
+                "type": "docs"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_seo_best_programming_language",
+      "type": "search",
+      "query": "best programming language to learn 2026",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "developer.aliyun.com",
+            "rank": 1,
+            "type": "docs"
+          },
+          {
+            "domain": "cj.sina.cn",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "cj.sina.cn",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 0.5,
+        "missing_terms": [
+          "programming language"
+        ],
+        "observed_domains": [
+          "developer.aliyun.com",
+          "cj.sina.cn",
+          "blog.csdn.net",
+          "cnblogs.com",
+          "cnblogs.com",
+          "cj.sina.cn",
+          "donews.com",
+          "juejin.cn"
+        ],
+        "probe": {
+          "probe_query": "best programming language to learn 2026 official documentation",
+          "authoritative": [
+            {
+              "domain": "m.php.cn",
+              "rank": 1,
+              "type": "official"
+            },
+            {
+              "domain": "m.toutiao.com",
+              "rank": 3,
+              "type": "official"
+            },
+            {
+              "domain": "cj.sina.com.cn",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "donews.com",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "m.php.cn",
+            "openeuler.csdn.net",
+            "m.toutiao.com",
+            "cj.sina.com.cn",
+            "donews.com"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['cj.sina.cn', 'developer.aliyun.com']",
+            "evidence": [
+              {
+                "domain": "developer.aliyun.com",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "cj.sina.cn",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "cj.sina.cn",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['cj.sina.com.cn', 'donews.com', 'm.php.cn', 'm.toutiao.com']",
+            "evidence": [
+              {
+                "domain": "m.php.cn",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "m.toutiao.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "cj.sina.com.cn",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "donews.com",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_seo_what_is_rest_api",
+      "type": "search",
+      "query": "what is a rest api explained",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "apifox.com",
+            "rank": 1,
+            "type": "official"
+          },
+          {
+            "domain": "algolia.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "ibm.com",
+            "rank": 3,
+            "type": "official"
+          },
+          {
+            "domain": "cloud.tencent.com.cn",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "ibm.com",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "cloud.tencent.cn",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "apifox.com",
+          "algolia.com",
+          "ibm.com",
+          "cloud.tencent.com.cn",
+          "ibm.com",
+          "cloud.tencent.cn",
+          "blog.csdn.net",
+          "redhat.com"
+        ],
+        "probe": {
+          "probe_query": "what is a rest api explained official documentation",
+          "authoritative": [
+            {
+              "domain": "ibm.com",
+              "rank": 1,
+              "type": "official"
+            },
+            {
+              "domain": "developer.mozilla.org",
+              "rank": 2,
+              "type": "docs"
+            },
+            {
+              "domain": "aws.amazon.com",
+              "rank": 3,
+              "type": "official"
+            },
+            {
+              "domain": "cloud.tencent.com",
+              "rank": 4,
+              "type": "official"
+            },
+            {
+              "domain": "volcengine.com",
+              "rank": 5,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "ibm.com",
+            "developer.mozilla.org",
+            "aws.amazon.com",
+            "cloud.tencent.com",
+            "volcengine.com"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['algolia.com', 'apifox.com', 'ibm.com']",
+            "evidence": [
+              {
+                "domain": "apifox.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "algolia.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "ibm.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "cloud.tencent.com.cn",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "ibm.com",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "cloud.tencent.cn",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['aws.amazon.com', 'cloud.tencent.com', 'developer.mozilla.org', 'ibm.com', 'volcengine.com']",
+            "evidence": [
+              {
+                "domain": "ibm.com",
+                "rank": 1,
+                "type": "official"
+              },
+              {
+                "domain": "developer.mozilla.org",
+                "rank": 2,
+                "type": "docs"
+              },
+              {
+                "domain": "aws.amazon.com",
+                "rank": 3,
+                "type": "official"
+              },
+              {
+                "domain": "cloud.tencent.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "volcengine.com",
+                "rank": 5,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_mix_python_asyncio_tutorial",
+      "type": "search",
+      "query": "Python asyncio 协程 异步编程 教程",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "developer.aliyun.com",
+            "rank": 1,
+            "type": "docs"
+          },
+          {
+            "domain": "superfastpython.com",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "m.17golang.com",
+            "rank": 4,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 0.75,
+        "missing_terms": [
+          "coroutine"
+        ],
+        "observed_domains": [
+          "developer.aliyun.com",
+          "superfastpython.com",
+          "blog.51cto.com",
+          "m.17golang.com",
+          "blog.csdn.net",
+          "blog.csdn.net",
+          "wenku.csdn.net",
+          "m.php.cn"
+        ],
+        "probe": {
+          "probe_query": "Python asyncio 协程 异步编程 教程 official documentation",
+          "authoritative": [
+            {
+              "domain": "docs.python.org",
+              "rank": 1,
+              "type": "docs"
+            },
+            {
+              "domain": "developer.aliyun.com",
+              "rank": 2,
+              "type": "docs"
+            },
+            {
+              "domain": "docs.python.org",
+              "rank": 3,
+              "type": "docs"
+            },
+            {
+              "domain": "developer.aliyun.com:443",
+              "rank": 4,
+              "type": "docs"
+            },
+            {
+              "domain": "docs.python.org",
+              "rank": 5,
+              "type": "docs"
+            }
+          ],
+          "top_domains": [
+            "docs.python.org",
+            "developer.aliyun.com",
+            "docs.python.org",
+            "developer.aliyun.com:443",
+            "docs.python.org"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['developer.aliyun.com', 'superfastpython.com']",
+            "evidence": [
+              {
+                "domain": "developer.aliyun.com",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "superfastpython.com",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "m.17golang.com",
+                "rank": 4,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['developer.aliyun.com', 'developer.aliyun.com:443', 'docs.python.org']",
+            "evidence": [
+              {
+                "domain": "docs.python.org",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "developer.aliyun.com",
+                "rank": 2,
+                "type": "docs"
+              },
+              {
+                "domain": "docs.python.org",
+                "rank": 3,
+                "type": "docs"
+              },
+              {
+                "domain": "developer.aliyun.com:443",
+                "rank": 4,
+                "type": "docs"
+              },
+              {
+                "domain": "docs.python.org",
+                "rank": 5,
+                "type": "docs"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_mix_react_hooks_best_practice",
+      "type": "search",
+      "query": "React hooks 最佳实践 useEffect useState",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "developer.aliyun.com",
+            "rank": 1,
+            "type": "docs"
+          },
+          {
+            "domain": "jishuzhan.net",
+            "rank": 5,
+            "type": "official"
+          },
+          {
+            "domain": "legacy.reactjs.org",
+            "rank": 6,
+            "type": "docs"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "developer.aliyun.com",
+          "juejin.cn",
+          "blog.51cto.com",
+          "juejin.cn",
+          "jishuzhan.net",
+          "legacy.reactjs.org",
+          "blog.csdn.net",
+          "blog.csdn.net"
+        ],
+        "probe": {
+          "probe_query": "React hooks 最佳实践 useEffect useState official documentation",
+          "authoritative": [
+            {
+              "domain": "react.dev",
+              "rank": 1,
+              "type": "docs"
+            },
+            {
+              "domain": "legacy.reactjs.org",
+              "rank": 2,
+              "type": "docs"
+            },
+            {
+              "domain": "reactjs.ac.cn",
+              "rank": 3,
+              "type": "docs"
+            },
+            {
+              "domain": "reactjs.ac.cn",
+              "rank": 4,
+              "type": "docs"
+            }
+          ],
+          "top_domains": [
+            "react.dev",
+            "legacy.reactjs.org",
+            "reactjs.ac.cn",
+            "reactjs.ac.cn",
+            "blog.csdn.net"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['developer.aliyun.com']",
+            "evidence": [
+              {
+                "domain": "developer.aliyun.com",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "jishuzhan.net",
+                "rank": 5,
+                "type": "official"
+              },
+              {
+                "domain": "legacy.reactjs.org",
+                "rank": 6,
+                "type": "docs"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['legacy.reactjs.org', 'react.dev', 'reactjs.ac.cn']",
+            "evidence": [
+              {
+                "domain": "react.dev",
+                "rank": 1,
+                "type": "docs"
+              },
+              {
+                "domain": "legacy.reactjs.org",
+                "rank": 2,
+                "type": "docs"
+              },
+              {
+                "domain": "reactjs.ac.cn",
+                "rank": 3,
+                "type": "docs"
+              },
+              {
+                "domain": "reactjs.ac.cn",
+                "rank": 4,
+                "type": "docs"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    },
+    {
+      "id": "s_mix_k8s_pod_what_is",
+      "type": "ask",
+      "query": "Kubernetes pod 是什么? 和容器有什么区别",
+      "url": null,
+      "confidence": "high",
+      "findings": {
+        "present_expected": [],
+        "authoritative_top": [
+          {
+            "domain": "cloud.tencent.cn",
+            "rank": 2,
+            "type": "official"
+          },
+          {
+            "domain": "apiref.com",
+            "rank": 4,
+            "type": "official"
+          },
+          {
+            "domain": "support.huaweicloud.com",
+            "rank": 6,
+            "type": "official"
+          }
+        ],
+        "must_terms_frac": 1.0,
+        "missing_terms": [],
+        "observed_domains": [
+          "blog.csdn.net",
+          "cloud.tencent.cn",
+          "wenku.csdn.net",
+          "apiref.com",
+          "blog.csdn.net",
+          "support.huaweicloud.com",
+          "support.huaweicloud.com",
+          "wenku.csdn.net"
+        ],
+        "probe": {
+          "probe_query": "Kubernetes pod 是什么? 和容器有什么区别 official documentation",
+          "authoritative": [
+            {
+              "domain": "cloud.tencent.cn",
+              "rank": 2,
+              "type": "official"
+            },
+            {
+              "domain": "apiref.com",
+              "rank": 4,
+              "type": "official"
+            }
+          ],
+          "top_domains": [
+            "blog.csdn.net",
+            "cloud.tencent.cn",
+            "wenku.csdn.net",
+            "apiref.com",
+            "blog.csdn.net"
+          ]
+        },
+        "recommendations": [
+          {
+            "field": "expected_domains",
+            "issue": "expected_domains 在真实 top10 完全未出现",
+            "suggestion": "考虑改为实际权威源: ['cloud.tencent.cn']",
+            "evidence": [
+              {
+                "domain": "cloud.tencent.cn",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "apiref.com",
+                "rank": 4,
+                "type": "official"
+              },
+              {
+                "domain": "support.huaweicloud.com",
+                "rank": 6,
+                "type": "official"
+              }
+            ]
+          },
+          {
+            "field": "expected_domains",
+            "issue": "refined 探针发现权威源",
+            "suggestion": "探针 top 权威源: ['apiref.com', 'cloud.tencent.cn']",
+            "evidence": [
+              {
+                "domain": "cloud.tencent.cn",
+                "rank": 2,
+                "type": "official"
+              },
+              {
+                "domain": "apiref.com",
+                "rank": 4,
+                "type": "official"
+              }
+            ]
+          }
+        ],
+        "confidence": "high"
+      }
+    }
+  ]
+}

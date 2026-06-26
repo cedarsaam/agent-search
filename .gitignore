@@ -1,0 +1,24 @@
+# ---- secrets / 本地配置(绝不提交) ----
+.env
+.env.local
+.mcp.json
+.codex/
+.claude/
+
+# ---- python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ---- 运行时缓存 / 数据 ----
+data/
+bench/cache/
+bench/budget.json
+*.sqlite3
+*.sqlite3.*
+
+# ---- OS ----
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+[botdetection.ip_limit]
+
+# activate link_token method
+link_token = false
+
+# activate ip_limit method
+ip_limit = false
+
+# activate ip_lists method
+ip_lists = false
+
+[botdetection.ip_lists]
+pass_searxng_org = false

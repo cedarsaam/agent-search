@@ -1,0 +1,34 @@
+{
+  "round": 3,
+  "evidence_source": "bench/results/case_updates_round_0.json + 复核 DeepSeek 缓存答案(中文作答)",
+  "applied_case_updates": [
+    {
+      "id": "a_snip_react_purpose",
+      "field": "must_include_terms+expected_domains",
+      "before": {
+        "must_include_terms": [
+          "user interface",
+          "JavaScript",
+          "library"
+        ],
+        "expected_domains": [
+          "react.dev",
+          "en.wikipedia.org"
+        ]
+      },
+      "after": {
+        "must_include_terms": [
+          "React",
+          "UI",
+          "JavaScript"
+        ],
+        "expected_domains": [
+          "react.dev",
+          "reactjs.org",
+          "developer.mozilla.org"
+        ]
+      },
+      "reason": "DeepSeek 用简体中文作答('构建用户界面(UI)...JavaScript 库'), 原英文术语 user interface/library 无法匹配中文答案; 改为语言稳定的 React/UI/JavaScript。expected 补充实际返回的权威源 reactjs.org(官方旧文档)与 mdn。"
+    }
+  ]
+}
