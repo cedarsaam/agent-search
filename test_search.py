@@ -64,6 +64,32 @@ class ExtractionQualityTest(unittest.TestCase):
         self.assertGreater(len(cleaned), 500)
 
 
+class BoilerplateCleanTest(unittest.TestCase):
+    def test_removes_boilerplate_keeps_content(self):
+        ex = ContentExtractor.__new__(ContentExtractor)
+        md = "\n".join([
+            "We use cookies to improve your experience. Accept all cookies",
+            "Sign in / Register",
+            "© 2024 Example Inc. All rights reserved.",
+            "[Home](/) · [About](/about) · [Contact](/contact)",
+            "本网站使用 Cookie 来提升体验",
+            "Python is a high-level language created by Guido van Rossum in 1991.",
+        ])
+        out = ex._clean_text(md)
+        self.assertIn("Guido van Rossum", out)
+        self.assertNotIn("rights reserved", out.lower())
+        self.assertNotIn("Sign in", out)
+        self.assertNotIn("Accept all cookies", out)
+        self.assertNotIn("About", out)            # 纯链接导航行被删
+        self.assertNotIn("提升体验", out)          # 中文 cookie 横幅被删
+
+    def test_long_prose_with_cookie_word_kept(self):
+        ex = ContentExtractor.__new__(ContentExtractor)
+        line = ("This article explains how browsers store cookies and how the HTTP "
+                "Set-Cookie response header works across many different scenarios.")
+        self.assertIn("Set-Cookie", ex._clean_text(line))
+
+
 class RankingTest(unittest.TestCase):
     def test_official_domain_beats_keyword_stuffed_seo_page(self):
         query = "OpenAI API GPT-5 pricing"

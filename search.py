@@ -286,6 +286,37 @@ def text_quality_ok(text: str, min_chars: int = 120) -> bool:
     return True
 
 
+# 自然语言样板行(cookie 横幅/登录注册/分享/版权/订阅/导航)。只对"短行"生效, 长正文永不删。
+_BOILERPLATE_RE = re.compile(
+    r"(we use cookies|accept (all )?cookies|cookie (settings|policy|preferences|consent)|"
+    r"manage (your )?(cookies|preferences)|this (site|website) uses cookies|"
+    r"sign\s?in|sign\s?up|log\s?in|create (an )?account|"
+    r"subscribe to (our )?newsletter|sign up for|"
+    r"skip to (main )?content|back to top|"
+    r"all rights reserved|©\s?\d{4}|\(c\)\s?\d{4}|"
+    r"share (on|this)|follow us on|"
+    r"本(网站|站)使用|使用\s?cookie|我们使用\s?cookie|cookie\s?(设置|政策|偏好|声明)|"
+    r"立即(登录|注册)|登录\s?[/·|]\s?注册|"
+    r"版权所有|保留所有权利|订阅(我们的)?(电子报|新闻|资讯|邮件)|"
+    r"分享到|关注我们|返回顶部|跳(到|转)(主要)?内容)",
+    re.I)
+
+
+def _is_boilerplate_line(line: str) -> bool:
+    """判定一行是否为样板(只对短行生效, 保护长正文/段落)。"""
+    if len(line) > 80:                       # 长行视为正文, 永不删
+        return False
+    if _BOILERPLATE_RE.search(line):
+        return True
+    # 纯链接/导航短行: 去掉 markdown 链接/裸 URL/分隔符后近乎为空
+    stripped = re.sub(r"\[[^\]]*\]\([^)]*\)", "", line)
+    stripped = re.sub(r"https?://\S+", "", stripped)
+    stripped = re.sub(r"[\s|·•‹›<>/\\\-—_]+", "", stripped)
+    if (line.count("](") >= 3 or line.lower().count("http") >= 3) and len(stripped) <= 3:
+        return True
+    return False
+
+
 def query_terms(query: str) -> list[str]:
     """提取用于片段相关性排序的轻量关键词。"""
     terms = []
@@ -988,6 +1019,8 @@ class ContentExtractor:
             if braces > 80 and braces / max(len(line), 1) > 0.08:
                 continue
             if re.search(r"\._?[A-Za-z0-9_-]+:where\(", line):
+                continue
+            if _is_boilerplate_line(line):   # cookie/登录/版权/纯链接等样板短行
                 continue
             lines.append(line)
         cleaned = "\n".join(lines)
