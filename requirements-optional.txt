@@ -1,13 +1,22 @@
-# 可选增强依赖；基础服务不依赖这些包，安装后会自动启用对应能力。
+# 可选增强依赖；基础服务不依赖这些包，安装后会自动启用对应能力（缺失则静默降级，绝不报错）。
 
 # 更强的正文抽取：主内容识别、去导航/广告、保留表格/链接。
 trafilatura>=2.1.0
 
+# 拼写容错搜索 L1/L2：基于编辑距离的查询纠错(skil→skill) + 结果级模糊匹配重排。
+# 装了之后 search 结果稀少时会自动用纠正词重搜，并对近形标题补分；未装则容错只走 L0(引擎 corrections)/L3(LLM)。
+rapidfuzz>=3.0
+
+# requests 兜底抽取分支的主体识别(按文本密度选正文)。未装则回退现有 bs4 main/article 启发式。
+readability-lxml>=0.8.1
+
 # 可选本地重排器。当前代码先使用轻量规则重排；接入 FlashRank 时可用作二阶段 rerank。
 # flashrank>=0.2.10
 
-# 可选 JS 渲染/深度抓取(免费, 本地跑)。代码已按现行 AsyncWebCrawler API 接好:
-#   装了之后, --deep / deep=True / requires_deep 会优先用 crawl4ai, 失败或没装则自动回退普通抽取链。
-# 默认不装(会额外下载 Playwright 浏览器, 体积大); 真要处理 JS 重的页面时再:
+# 可选 JS 渲染/深度抓取(免费, 本地跑)。代码已按现行 AsyncWebCrawler + deep_crawling API 接好:
+#   - web_extract --deep / deep=True / requires_deep: 优先用 crawl4ai 抓 JS 重的单页;
+#   - web_crawl(递归深抓 2~6 级): 装了用 crawl4ai 的 BFSDeepCrawlStrategy, 未装则纯 Python BFS 兜底;
+#   失败或没装一律自动回退, 不影响主流程。
+# 默认不装(会额外下载 Playwright 浏览器, 体积大); 真要 JS 渲染时再:
 #   pip install "crawl4ai>=0.9.0" && python -m playwright install chromium
 # crawl4ai>=0.9.0

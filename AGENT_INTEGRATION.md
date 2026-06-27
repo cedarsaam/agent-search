@@ -5,7 +5,7 @@
 
 ---
 
-**暴露的工具**：`web_search`(搜索，含豆包引擎、时间/分类过滤、本地重排)、`web_ask`(自建 SearXNG+DeepSeek RAG)、`github_search`(查 GitHub，走 gh cli)、`github_compare`(技术选型对比：GitHub API 一手事实 + OpenSSF Scorecard 健康分 via deps.dev，不下结论)、`web_extract`(抓正文)、`web_map`(发现站点链接)。
+**暴露的工具**（8 个）：`web_search`(搜索，含豆包引擎、时间/分类过滤、本地重排；`expand_mode` 识别"对比/选型"意图自动多角度并发扇出找全候选；拼写容错 L0-L3：消费 SearXNG corrections → rapidfuzz 编辑距离 → 模糊重排 → LLM 纠拼写)、`web_ask`(自建 SearXNG+DeepSeek RAG)、`web_crawl`(递归深抓 2–6 级，沿链接 BFS/best-first 抓多级正文，带预算与逐链接 SSRF 护栏；先 `web_map` 探路再 `web_crawl` 深抓)、`compare_solutions`(通用方案对比矩阵：任意候选拉齐，GitHub 候选取一手事实、非 GitHub 走官方页规则/可选 LLM 抽取，每格带 source_url+证据+置信度可追溯)、`github_search`(查 GitHub，走 gh cli)、`github_compare`(技术选型对比：GitHub API 一手事实 + OpenSSF Scorecard 健康分 via deps.dev，不下结论)、`web_extract`(抓正文)、`web_map`(发现站点链接)。
 
 ## 方式一：Claude Code / Codex / Claude Desktop / Cursor（MCP）⭐ 最省事
 

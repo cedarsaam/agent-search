@@ -30,6 +30,9 @@ Built-in `WebSearch` / `WebFetch` give you links and snippets. Your agent still 
 - **RAG with citations** — search → parallel multi-source fetch → LLM summary with `[1][2]` references and **per-source excerpts** (chunk-level evidence); bad body falls back to snippet.
 - **GitHub, done right** — typed `repos/code/issues/prs` search via the `gh` CLI, returning `license / last-commit / archived / forks` for real evaluation, not just stars.
 - **🆕 Tech-selection compare** — `github_compare` pulls **first-party facts** (`gh api`) + **OpenSSF Scorecard** health (via the free [deps.dev](https://deps.dev) API) and flags *archived / stale / no-release / copyleft*. Evidence, not verdicts.
+- **🆕 Universal solution compare** — `compare_solutions` builds a **comparison matrix** for *any* candidates (OSS libs / SaaS / frameworks), not just GitHub repos: GitHub candidates reuse first-party `repo_facts`; non-GitHub ones get official-page rule extraction (price/version/license). **Every cell carries `source_url` + excerpt + confidence** (official/secondary/llm) — traceable, not a black box.
+- **🆕 Recursive deep crawl** — `web_crawl` follows links **2–6 levels deep** (BFS / best-first), returning clean per-page Markdown. Uses Crawl4AI's deep-crawl strategy when installed, else a dependency-free pure-Python BFS. Budget guards (depth/page/time/byte caps) + per-URL SSRF check on every enqueued link. `web_map` scouts (one level, links only); `web_crawl` goes deep (many levels, full text).
+- **Typo-tolerant search** — layered fuzzy fallback: consume SearXNG `corrections` → rapidfuzz edit-distance correction → fuzzy rank bonus → LLM spelling rewrite (all silently degrade if deps absent). A query like `skil` still finds `skill`.
 - **Site mapping** — `sitemap.xml` first, page-link fallback, same-domain dedup.
 - **Tavily-compatible API** — drop-in `/tavily/search` with stable `include_raw_content`.
 - **Caching** — SQLite TTL cache; works offline against the cache.
@@ -66,13 +69,13 @@ No single OSS project covers this niche — most are end-user apps, single-capab
 | GPT Researcher | ⚠️ | ✅ | ✅ report | ❌ | ❌ | ❌ | ❌ |
 | SearXNG | ✅✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | mcp-searxng | ✅ | ⚠️ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **Agent Search** | **✅ 9** | ⚠️/✅ opt | **✅ chunk** | **✅✅** | **✅** | **✅ 6 tools** | **✅ only one** |
+| **Agent Search** | **✅ 9** | ⚠️/✅ opt | **✅ chunk** | **✅✅** | **✅ + deep crawl** | **✅ 8 tools** | **✅ only one** |
 
 ## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    A["Agent / MCP client"] -->|"web_search · web_ask · web_extract<br/>web_map · github_search · github_compare"| B["Agent Search<br/>FastAPI · MCP · CLI"]
+    A["Agent / MCP client"] -->|"web_search · web_ask · web_extract · web_map<br/>web_crawl · compare_solutions · github_search · github_compare"| B["Agent Search<br/>FastAPI · MCP · CLI"]
     B --> C["SearXNG · 9 engines<br/>meta-search + rerank"]
     B --> D["trafilatura / Jina / requests<br/>(+ Crawl4AI) · clean extraction"]
     B --> E["LLM (OpenAI-compatible)<br/>RAG with citations"]
@@ -120,6 +123,8 @@ cp .mcp.json.example .mcp.json   # set the absolute path to this repo
 | `web_ask` | RAG answer with `[n]` citations + per-source excerpts |
 | `web_extract` | Fetch a page → clean Markdown |
 | `web_map` | Discover a site's links (sitemap-first) |
+| `web_crawl` | Recursive deep crawl 2–6 levels (links + per-page Markdown, budget + SSRF guarded) |
+| `compare_solutions` | Universal solution comparison matrix (any candidates; each cell traceable to a source) |
 | `github_search` | Typed `repos/code/issues/prs` search |
 | `github_compare` | First-party tech-selection comparison (facts + OpenSSF Scorecard) |
 

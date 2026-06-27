@@ -30,6 +30,9 @@
 - **带引用 RAG**：搜索 → 并行多源抓正文 → LLM 生成带 `[1][2]` 引用的答案，**每个来源带 excerpt**（chunk 级证据）；正文坏了用 snippet 兜底。
 - **GitHub 做对**：`gh` CLI 分类型检索 `repos/code/issues/prs`，repos 返回 `license / 最近提交 / 是否归档 / forks`，能真正评估而不止看 star。
 - **🆕 技术选型对比**：`github_compare` 拉取**一手事实**（`gh api`）+ **OpenSSF Scorecard** 健康分（经免费的 [deps.dev](https://deps.dev) API），并标注 *已归档 / 长期无提交 / 无 release / copyleft*。**只给证据，不替你下结论。**
+- **🆕 通用方案对比**：`compare_solutions` 给*任意候选*（开源库 / SaaS / 框架）拉成**对比矩阵**，不限 GitHub：GitHub 候选复用一手 `repo_facts`，非 GitHub 候选走官方页规则抽取（版本/定价/许可）。**每个格子带 `source_url` + 证据片段 + 置信度**（official/secondary/llm），可追溯，不是黑盒。
+- **🆕 递归深抓**：`web_crawl` 沿链接**深抓 2–6 级**（BFS / best-first），每页返回干净 Markdown。装了 Crawl4AI 走其深抓策略，没装则纯 Python BFS 兜底（零额外依赖）。带预算护栏（深度/页数/时间/字节上限）+ 每个入队链接逐一 SSRF 校验。`web_map` 探路（单层、只链接），`web_crawl` 深入（多层、抓正文）。
+- **拼写容错搜索**：分层模糊兜底——消费 SearXNG `corrections` → rapidfuzz 编辑距离纠错 → 模糊重排加分 → LLM 纠拼写（依赖缺失全部静默降级）。搜 `skil` 也能找到 `skill`。
 - **站点地图**：`sitemap.xml` 优先，页面链接兜底，同域去重。
 - **Tavily 兼容接口**：`/tavily/search` 直接替换，`include_raw_content` 稳定。
 - **缓存**：SQLite TTL 缓存，可离线复用。
@@ -72,7 +75,7 @@ $ agent-search "python asyncio tutorial"
 
 ```mermaid
 flowchart TD
-    A["Agent / MCP 客户端"] -->|"web_search · web_ask · web_extract<br/>web_map · github_search · github_compare"| B["Agent Search<br/>FastAPI · MCP · CLI"]
+    A["Agent / MCP 客户端"] -->|"web_search · web_ask · web_extract · web_map<br/>web_crawl · compare_solutions · github_search · github_compare"| B["Agent Search<br/>FastAPI · MCP · CLI"]
     B --> C["SearXNG · 9 引擎<br/>元搜索 + 重排"]
     B --> D["trafilatura / Jina / requests<br/>(+ Crawl4AI) · 干净抽取"]
     B --> E["LLM(OpenAI 兼容)<br/>带引用 RAG"]
@@ -120,6 +123,8 @@ cp .mcp.json.example .mcp.json   # 填本仓库的绝对路径
 | `web_ask` | 带 `[n]` 引用 + 每源 excerpt 的 RAG 答案 |
 | `web_extract` | 抓页面 → 干净 Markdown |
 | `web_map` | 发现站点链接（sitemap 优先） |
+| `web_crawl` | 递归深抓 2–6 级（链接 + 每页 Markdown，带预算与 SSRF 护栏） |
+| `compare_solutions` | 通用方案对比矩阵（任意候选；每格可追溯到来源） |
 | `github_search` | 分类型 `repos/code/issues/prs` 检索 |
 | `github_compare` | 一手数据技术选型对比（事实 + OpenSSF Scorecard） |
 
