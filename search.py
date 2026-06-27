@@ -320,6 +320,52 @@ def query_expansions(query: str) -> list[str]:
     return []
 
 
+# "对比/选型"意图: 命中则把查询扇出成多角度子查询, 一次并发把候选方案找全找快。
+COMPARE_INTENT_RE = re.compile(
+    r"\b(vs\.?|versus|alternatives?|compare|comparison|which\s+is\s+better)\b"
+    r"|对比|相比|选型|哪个好|哪个更好|哪个比较好|区别|替代|代替|孰优|谁更", re.I)
+
+PLAN_MAX_SUBQ = int(os.environ.get("PLAN_MAX_SUBQ", "5"))
+
+
+def plan_queries(query: str, mode: str = "auto") -> list[tuple]:
+    """把查询规划成 (子查询, 权重, 标签) 列表(不含原查询)。
+
+    mode:
+      off     → 不扩展, 返回 []
+      compare → 强制对比扇出(alternatives/comparison/benchmark/best + 官方增强)
+      auto    → 命中对比意图才扇出, 否则退化为 query_expansions(文档/价格官方增强)
+    权重<1, 供调用方轻度下压"角度子查询"的结果, 避免 best/benchmark 类软文盖过官方源。
+    子查询数封顶 PLAN_MAX_SUBQ。
+    """
+    if mode == "off":
+        return []
+    q = (query or "").strip()
+    if not q:
+        return []
+    is_compare = mode == "compare" or bool(COMPARE_INTENT_RE.search(q))
+    plan: list[tuple] = []
+    if is_compare:
+        plan += [
+            (f"{q} alternatives", 0.85, "alt"),
+            (f"{q} comparison", 0.85, "vs"),
+            (f"{q} benchmark", 0.7, "benchmark"),
+            (f"best {q}", 0.7, "best"),
+        ]
+    for e in query_expansions(q):           # 官方文档/价格增强(对比与非对比都加)
+        plan.append((e, 0.9, "official"))
+    # 去重 + 去掉与原查询相同 + 封顶
+    seen, out = set(), []
+    for subq, w, tag in plan:
+        k = subq.lower()
+        if subq and k != q.lower() and k not in seen:
+            seen.add(k)
+            out.append((subq, w, tag))
+        if len(out) >= PLAN_MAX_SUBQ:
+            break
+    return out
+
+
 def result_rank_score(query: str, result: "SearchResult", index: int) -> float:
     """轻量重排：综合引擎分数、关键词命中、官方/文档域名和原始位置。"""
     terms = query_terms(query)
@@ -1514,10 +1560,14 @@ class AgentSearch:
             sys.stderr.write(f"[*] FlareSolverr: 离线 (CAPTCHA 引擎不可用)\n")
         sys.stderr.write(f"[*] Jina Reader: 可用 (r.jina.ai 内容提取)\n\n")
 
-    def _result_dicts(self, query: str, results: list[SearchResult], top_k: int, rerank=True) -> list[dict]:
+    def _result_dicts(self, query: str, results: list[SearchResult], top_k: int, rerank=True,
+                      weight_map=None) -> list[dict]:
         ranked = []
         for i, r in enumerate(results):
             rank_score = result_rank_score(query, r, i) if rerank else float(r.score or 0.0)
+            # plan fan-out: 角度子查询的结果按权重轻度下压(只在重排时生效)
+            if rerank and weight_map:
+                rank_score *= weight_map.get(canonical_url(r.url), 1.0)
             ranked.append((rank_score, i, r))
         if rerank:
             ranked.sort(key=lambda x: (-x[0], x[1]))
@@ -1529,14 +1579,15 @@ class AgentSearch:
         return out
 
     def _multi_search(self, queries, engines=None, *, time_range=None, categories=None,
-                      language=None, safe_search=None, max_workers=None):
+                      language=None, safe_search=None, max_workers=None, group=False):
         """并发搜多个(子)查询, 每个子查询独立缓存, 合并去重(canonical_url)。
 
         用于"找方案/对比"场景: 把多角度子查询一次并发打出去, 替代串行扩展。
-        返回 (merged_results, primary_error, n_failed):
-          merged_results — 去重后的 SearchResult 列表(按 queries 顺序);
-          primary_error  — 第一个查询的 error;
-          n_failed       — 失败子查询数(供诊断, 不再静默吞掉, 修 BUG-6)。
+        返回 (results, primary_error, n_failed):
+          results — group=False(默认): 去重后的 SearchResult 列表(按 queries 顺序);
+                    group=True: dict{query: [SearchResult,...]}(保留来源, 供按子查询加权);
+          primary_error — 第一个查询的 error;
+          n_failed — 失败子查询数(供诊断, 不再静默吞掉, 修 BUG-6)。
         子查询缓存走 cache.get_search/set_search(带 subq 标记, 与顶层 query 缓存隔离);
         评测桩会把 engine.cache 置空, 故 eval 下自动失效、不影响"每轮新鲜重跑"。
         """
@@ -1544,7 +1595,7 @@ class AgentSearch:
 
         queries = list(dict.fromkeys(q for q in queries if q))
         if not queries:
-            return [], None, 0
+            return ({} if group else []), None, 0
         sub_opts = {"subq": True, "time_range": time_range,
                     "categories": ",".join(categories) if categories else None,
                     "language": language, "safe_search": safe_search}
@@ -1566,6 +1617,11 @@ class AgentSearch:
             for q, results, err in ex.map(_one, queries):
                 by_query[q] = (results, err)
 
+        primary_error = by_query[queries[0]][1]
+        n_failed = sum(1 for _, e in by_query.values() if e)
+        if group:
+            return {q: by_query.get(q, ([], None))[0] for q in queries}, primary_error, n_failed
+
         merged, seen = [], set()
         for q in queries:
             for r in by_query.get(q, ([], None))[0]:
@@ -1573,13 +1629,12 @@ class AgentSearch:
                 if r.url and key not in seen:
                     seen.add(key)
                     merged.append(r)
-        primary_error = by_query[queries[0]][1]
-        n_failed = sum(1 for _, e in by_query.values() if e)
         return merged, primary_error, n_failed
 
     def search(self, query: str, engines=None, top_k=10, extract=False, deep=False,
                use_flaresolverr=False, time_range=None, categories=None,
-               language=None, safe_search=None, rerank=True, auto_rewrite=True) -> dict:
+               language=None, safe_search=None, rerank=True, auto_rewrite=True,
+               expand_mode="auto") -> dict:
         """搜索入口
 
         Args:
@@ -1592,12 +1647,16 @@ class AgentSearch:
             categories: None 或 ["general", "news", "images"]
             language: 语言代码
             safe_search: None / 0 / 1 / 2
+            expand_mode: off / auto / compare —— 多查询扩展策略。auto(默认)命中对比意图
+                         才多角度扇出; compare 强制扇出; off 不扩展。
 
         Returns:
             dict: {query, results, source, elapsed_ms, engines_used, ...}
         """
         t0 = time.time()
         backend = "flaresolverr" if use_flaresolverr else ("searxng" if self._prefer_searxng else "web")
+        # auto_rewrite=False 时实际不扩展, 缓存键按 off 记(顺带覆盖 BUG-3 的 auto_rewrite 维度)
+        eff_expand = expand_mode if auto_rewrite else "off"
         cache_options = {
             "top_k": top_k,
             "backend": backend,
@@ -1606,7 +1665,9 @@ class AgentSearch:
             "language": language,
             "safe_search": safe_search,
             "rerank": bool(rerank),
+            "expand_mode": eff_expand,
         }
+        plan_weight_map = None
 
         # 1. 检查缓存
         cached = self.cache.get_search(query, engines, **cache_options)
@@ -1634,20 +1695,35 @@ class AgentSearch:
                 language=language,
                 safe_search=safe_search,
             )
-            # 多查询扩展: 把通用增强查询并发打出去(替代串行循环, 修 BUG-6 不再静默吞错),
-            # 合并进主结果后统一去重; P0-3 起 query_expansions 升级为多角度 plan 时复用此并发原语。
-            if auto_rewrite and not resp.error:
-                expansions = query_expansions(query)
-                if expansions:
-                    extra, _perr, n_failed = self._multi_search(
-                        expansions, engines, time_range=time_range, categories=categories,
-                        language=language, safe_search=safe_search)
-                    merged, seen = [], set()
-                    for r in list(resp.results) + extra:
+            # 多查询扩展: plan_queries 把"对比/选型"意图扇出成多角度子查询(并发, 替代串行,
+            # 修 BUG-6 不静默吞错), 合并进主结果后按子查询权重轻度下压角度结果再统一重排。
+            if auto_rewrite and not resp.error and eff_expand != "off":
+                plan = plan_queries(query, eff_expand)
+                if plan:
+                    by_q, _perr, n_failed = self._multi_search(
+                        [p[0] for p in plan], engines, time_range=time_range,
+                        categories=categories, language=language, safe_search=safe_search,
+                        group=True)
+                    weight_of = {p[0]: p[1] for p in plan}
+                    merged, seen, plan_weight_map = [], set(), {}
+                    for r in resp.results:           # 原查询结果优先, 权重 1.0
                         key = canonical_url(r.url)
                         if r.url and key not in seen:
                             seen.add(key)
                             merged.append(r)
+                            plan_weight_map[key] = 1.0
+                    for subq, results in by_q.items():   # 角度子查询结果, 同 url 取最大权重
+                        w = weight_of.get(subq, 0.7)
+                        for r in results:
+                            if not r.url:
+                                continue
+                            key = canonical_url(r.url)
+                            if key in seen:
+                                plan_weight_map[key] = max(plan_weight_map.get(key, 0.0), w)
+                                continue
+                            seen.add(key)
+                            merged.append(r)
+                            plan_weight_map[key] = w
                     resp.results = merged
                     resp.total = len(merged)
                     if n_failed:
@@ -1663,7 +1739,8 @@ class AgentSearch:
         # 4. 构建返回
         result_dict = {
             "query": query,
-            "results": self._result_dicts(query, resp.results, top_k, rerank=rerank),
+            "results": self._result_dicts(query, resp.results, top_k, rerank=rerank,
+                                          weight_map=plan_weight_map),
             "total": min(len(resp.results), top_k),
             "source": resp.source,
             "error": resp.error,

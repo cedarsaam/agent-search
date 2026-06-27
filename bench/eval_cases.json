@@ -1038,5 +1038,71 @@
     "requires_flaresolverr": false,
     "requires_deep": false,
     "notes": "考中英混合概念问答(ask+RAG)能否引用 Kubernetes 官方文档并解释 Pod 与容器关系"
+  },
+  {
+    "id": "c_redis_vs_memcached",
+    "type": "search",
+    "query": "Redis vs Memcached 对比 选型",
+    "expected_domains": [
+      "redis.io",
+      "memcached.org",
+      "aws.amazon.com",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "Redis",
+      "Memcached"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "对比意图 fan-out: 验证 Redis/Memcached 选型能并发扇出找全候选并命中权威源"
+  },
+  {
+    "id": "c_postgres_vs_mysql",
+    "type": "search",
+    "query": "PostgreSQL vs MySQL alternatives comparison",
+    "expected_domains": [
+      "postgresql.org",
+      "mysql.com",
+      "db-engines.com",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "PostgreSQL",
+      "MySQL"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "对比意图 fan-out: 数据库选型对比, 验证 alternatives/comparison 角度扇出"
+  },
+  {
+    "id": "c_fastapi_vs_flask",
+    "type": "search",
+    "query": "FastAPI vs Flask 哪个好 选型",
+    "expected_domains": [
+      "fastapi.tiangolo.com",
+      "flask.palletsprojects.com",
+      "github.com",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "FastAPI",
+      "Flask"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "对比意图 fan-out: Python web 框架选型, 验证中文'哪个好/选型'触发对比扇出"
   }
 ]

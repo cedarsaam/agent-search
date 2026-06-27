@@ -30,7 +30,8 @@ def engine() -> AgentSearch:
 
 @mcp.tool()
 def web_search(query: str, top_k: int = 8, use_flaresolverr: bool = False,
-               time_range: str = "", categories: str = "", language: str = "") -> list:
+               time_range: str = "", categories: str = "", language: str = "",
+               expand_mode: str = "auto") -> list:
     """联网搜索，返回结果列表(标题/URL/摘要)。
 
     需要实时信息、新闻、技术文档、查资料时调用本工具，而不是凭记忆回答。
@@ -47,6 +48,9 @@ def web_search(query: str, top_k: int = 8, use_flaresolverr: bool = False,
         time_range: 时间范围 day/month/year，留空不过滤
         categories: SearXNG 分类，逗号分隔，如 general,news
         language: 语言代码，如 zh-CN / en-US
+        expand_mode: 多查询扩展策略 off/auto/compare。auto(默认)识别"对比/选型"意图后
+                     自动多角度并发扇出(alternatives/comparison/benchmark/best)把候选找全；
+                     compare 强制扇出(找方案做选型时用)；off 只搜原词。
     """
     cats = [c.strip() for c in categories.split(",") if c.strip()] if categories else None
     res = engine().search(
@@ -56,6 +60,7 @@ def web_search(query: str, top_k: int = 8, use_flaresolverr: bool = False,
         time_range=time_range or None,
         categories=cats,
         language=language or None,
+        expand_mode=expand_mode or "auto",
     )
     return [
         {"title": r["title"], "url": r["url"], "snippet": r.get("snippet", ""), "rank_score": r.get("rank_score")}

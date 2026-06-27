@@ -53,6 +53,7 @@ class SearchReq(BaseModel):
     language: Optional[str] = None
     safe_search: Optional[int] = None
     rerank: bool = True
+    expand_mode: str = "auto"                  # off / auto / compare 多查询扩展策略
 
 
 class AskReq(BaseModel):
@@ -120,7 +121,7 @@ def search(req: SearchReq):
         deep=req.deep, use_flaresolverr=req.use_flaresolverr,
         time_range=req.time_range, categories=req.categories,
         language=req.language, safe_search=req.safe_search,
-        rerank=req.rerank,
+        rerank=req.rerank, expand_mode=req.expand_mode,
     )
 
 

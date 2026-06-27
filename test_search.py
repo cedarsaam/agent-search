@@ -254,5 +254,31 @@ class MultiSearchTest(unittest.TestCase):
         self.assertEqual(nfail, 1)    # qerr 失败被计数, 不静默吞
 
 
+class PlanQueriesTest(unittest.TestCase):
+    def test_compare_intent_fans_out(self):
+        from search import plan_queries
+        plan = plan_queries("Postgres vs MySQL", "auto")
+        subs = [p[0] for p in plan]
+        self.assertTrue(any("alternatives" in s for s in subs))
+        self.assertTrue(any("comparison" in s for s in subs))
+        self.assertTrue(all(0 < p[1] <= 1 for p in plan))   # 权重在 (0,1]
+        self.assertLessEqual(len(plan), 5)                  # 封顶 PLAN_MAX_SUBQ
+
+    def test_zh_compare_intent(self):
+        from search import plan_queries
+        plan = plan_queries("Redis 和 Memcached 的区别", "auto")
+        self.assertTrue(plan)  # "区别" 命中对比意图
+
+    def test_non_compare_no_angle_fanout(self):
+        from search import plan_queries
+        subs = [p[0] for p in plan_queries("python asyncio tutorial", "auto")]
+        # 文档意图只加 official, 不应有对比角度子查询
+        self.assertTrue(all("benchmark" not in s and "alternatives" not in s for s in subs))
+
+    def test_off_mode_empty(self):
+        from search import plan_queries
+        self.assertEqual(plan_queries("X vs Y", "off"), [])
+
+
 if __name__ == "__main__":
     unittest.main()
