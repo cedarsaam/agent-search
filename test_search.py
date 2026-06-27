@@ -179,6 +179,40 @@ class SSRFGuardTest(unittest.TestCase):
                   "http://example.com/page"):
             self.assertTrue(url_is_safe(u), u)
 
+    def test_safe_get_rejects_redirect_to_internal(self):
+        # 公网起点过校验, 但服务端 302 跳内网 → 必须被拦
+        from search import safe_get
+
+        class _Resp:
+            def __init__(self, status, location=None):
+                self.status_code = status
+                self.headers = {"Location": location} if location else {}
+                self.is_redirect = location is not None and status in (301, 302, 303, 307, 308)
+
+        class _Sess:
+            def get(self, url, timeout=None, allow_redirects=False, **kw):
+                return _Resp(302, "http://127.0.0.1/secret")  # 永远跳内网
+
+        with self.assertRaises(ValueError):
+            safe_get(_Sess(), "http://93.184.216.34/start")  # 公网 IP 字面量起点
+
+    def test_dns_resolved_private_ip_blocked(self):
+        # 公网域名解析到内网(DNS rebinding) → 开启 DNS 校验时必须被拦
+        import os
+        import socket
+        import search
+        orig_gai, orig_flag = socket.getaddrinfo, os.environ.get("AGENT_SEARCH_RESOLVE_DNS")
+        socket.getaddrinfo = lambda host, *a, **k: [(2, 1, 6, "", ("10.0.0.7", 0))]
+        os.environ["AGENT_SEARCH_RESOLVE_DNS"] = "1"
+        try:
+            self.assertFalse(search.url_is_safe("http://looks-public.example/x"))
+        finally:
+            socket.getaddrinfo = orig_gai
+            if orig_flag is None:
+                os.environ.pop("AGENT_SEARCH_RESOLVE_DNS", None)
+            else:
+                os.environ["AGENT_SEARCH_RESOLVE_DNS"] = orig_flag
+
 
 if __name__ == "__main__":
     unittest.main()

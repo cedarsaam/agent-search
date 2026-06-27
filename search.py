@@ -138,12 +138,37 @@ def _ip_blocked(addr) -> bool:
             or addr.is_reserved or addr.is_multicast or addr.is_unspecified)
 
 
+def _dns_check_enabled() -> bool:
+    """DNS 解析校验默认关。常见 fake-ip / 分裂 DNS / 透明代理环境会把公网域名解析到
+    198.18.0.0/15 等保留段, 开了会全量误杀。硬化的直连部署可设 AGENT_SEARCH_RESOLVE_DNS=1。"""
+    return os.environ.get("AGENT_SEARCH_RESOLVE_DNS", "0").lower() in ("1", "true", "yes")
+
+
+def _resolve_ips_blocked(host: str) -> bool:
+    """解析主机名的全部 A/AAAA, 任一落在私网/环回/保留即拦截(防 DNS rebinding /
+    公网域名解析到内网)。解析失败返回 False(交给后续请求自行失败, 不因解析不了误判)。"""
+    import socket
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except (socket.gaierror, UnicodeError, OSError, ValueError):
+        return False
+    for info in infos:
+        ip = (info[4][0] or "").split("%")[0]  # 去 IPv6 scope id
+        try:
+            if _ip_blocked(ipaddress.ip_address(ip)):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def url_is_safe(url: str) -> bool:
-    """抓取前的 SSRF 校验(拦截标准 SSRF 载荷, 不依赖 DNS 解析以便各环境通用)。
+    """抓取前的 SSRF 校验(拦截标准 SSRF 载荷)。
 
     - IP 字面量按私网/环回/链路本地(含云元数据 169.254.169.254)/保留判定并拒绝。
     - 明显内部主机名(localhost / *.local / *.internal 等)拒绝。
-    - 其余公网主机名放行(其解析与抓取交由 requests)。
+    - 公网主机名: 仅当 AGENT_SEARCH_RESOLVE_DNS=1 时解析 A/AAAA, 任一指向内网即拒绝
+      (防 DNS rebinding; 默认关, 因 fake-ip/透明代理环境会误杀)。
     可设 AGENT_SEARCH_ALLOW_PRIVATE=1 整体放开(用于抓本地/内网文档)。
     """
     if ALLOW_PRIVATE_URLS:
@@ -161,7 +186,29 @@ def url_is_safe(url: str) -> bool:
         pass
     if host.lower() == "localhost" or _INTERNAL_HOST_RE.search(host):
         return False
+    if _dns_check_enabled() and _resolve_ips_blocked(host):
+        return False
     return True
+
+
+# 抓取统一走 safe_get: 禁用自动重定向, 对每一跳 Location 重新做 url_is_safe 校验后才跟随,
+# 堵住"公网 URL 过校验 → 服务端 302 跳内网/元数据"的 SSRF 绕过。
+MAX_REDIRECTS = 4
+
+
+def safe_get(session, url, *, timeout=REQUEST_TIMEOUT, max_redirects=MAX_REDIRECTS, **kwargs):
+    """SSRF 安全的 GET。逐跳校验重定向目标; 目标不安全抛 ValueError, 跳数超限亦然。"""
+    kwargs.pop("allow_redirects", None)
+    current = url
+    for _ in range(max_redirects + 1):
+        if not url_is_safe(current):
+            raise ValueError(f"SSRF 拒绝(指向私网/环回/保留地址): {current}")
+        resp = session.get(current, timeout=timeout, allow_redirects=False, **kwargs)
+        if resp.is_redirect:  # 状态码属重定向且带 Location
+            current = urljoin(current, resp.headers.get("Location", ""))
+            continue
+        return resp
+    raise ValueError(f"重定向过多(>{max_redirects}): {url}")
 
 
 def normalize_repo_slug(repo: str) -> str:
@@ -909,11 +956,13 @@ class ContentExtractor:
             if method == "trafilatura":
                 import trafilatura
 
-                try:
-                    downloaded = trafilatura.fetch_url(url, timeout=REQUEST_TIMEOUT)
-                except TypeError:
-                    # 不同版本 fetch_url 签名不一致(部分版本无 timeout)
-                    downloaded = trafilatura.fetch_url(url)
+                # 用 safe_get 自抓(逐跳校验重定向), 再喂给 trafilatura.extract;
+                # 不用 trafilatura.fetch_url —— 它自管重定向会绕过 SSRF 校验。
+                resp = safe_get(self.session, url)
+                resp.raise_for_status()
+                if not resp.encoding or resp.encoding.lower() in {"iso-8859-1", "latin-1"}:
+                    resp.encoding = resp.apparent_encoding or "utf-8"
+                downloaded = resp.text
                 if not downloaded:
                     return {"url": url, "markdown": "", "method_used": "trafilatura", "error": "empty download"}
                 try:
@@ -980,7 +1029,7 @@ class ContentExtractor:
                         "error": None if md else "crawl4ai 返回空正文"}
 
             elif method == "requests":
-                r = self.session.get(url, timeout=REQUEST_TIMEOUT)
+                r = safe_get(self.session, url)  # 逐跳校验重定向, 防 SSRF
                 r.raise_for_status()
                 if not r.encoding or r.encoding.lower() in {"iso-8859-1", "latin-1"}:
                     r.encoding = r.apparent_encoding or "utf-8"
@@ -1099,7 +1148,7 @@ class SiteMapper:
 
     def _sitemap_links(self, base, max_links=50):
         sitemap_url = urlunparse((base.scheme, base.netloc, "/sitemap.xml", "", "", ""))
-        r = self.session.get(sitemap_url, timeout=REQUEST_TIMEOUT)
+        r = safe_get(self.session, sitemap_url)  # 逐跳校验重定向, 防 SSRF
         if r.status_code >= 400:
             return []
         locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", r.text, flags=re.I)
@@ -1111,7 +1160,7 @@ class SiteMapper:
     def _page_links(self, url, base, max_links=50, same_domain=True):
         from bs4 import BeautifulSoup
 
-        r = self.session.get(url, timeout=REQUEST_TIMEOUT)
+        r = safe_get(self.session, url)  # 逐跳校验重定向, 防 SSRF
         r.raise_for_status()
         if not r.encoding or r.encoding.lower() in {"iso-8859-1", "latin-1"}:
             r.encoding = r.apparent_encoding or "utf-8"

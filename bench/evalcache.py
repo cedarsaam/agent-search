@@ -223,6 +223,9 @@ def activate(engine, budget: Budget):
             self.text = d["text"]
             self.encoding = d.get("encoding")
             self.apparent_encoding = d.get("apparent_encoding") or "utf-8"
+            # 缓存的是抓取后的最终响应, 视为非重定向(供 search.safe_get 的逐跳校验使用)
+            self.is_redirect = False
+            self.headers = {}
 
         def raise_for_status(self):
             if self.status_code >= 400:
