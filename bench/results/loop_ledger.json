@@ -1,7 +1,7 @@
 {
-  "iter": 12,
-  "best_score": 88.62,
-  "best_commit": "70d0b1c",
+  "iter": 13,
+  "best_score": 88.92,
+  "best_commit": "11fac10",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -16,7 +16,8 @@
     "iter4 起 suite=53例, best_score 口径同步为53例(加了3条对比用例)",
     "iter8: suite=55例; settings.yml brave spellcheck已commit但运行容器挂父仓settings,live corrections需用户同步父仓+restart;best_score=88.21口径含55例",
     "iter9: venv 装了 rapidfuzz 3.14.5 让 L1/L2 生效;requirements-optional 待 docs 轮补",
-    "iter11: suite=57例(+2深抓); 头牌A web_crawl(第7工具)交付; best_score=88.62"
+    "iter11: suite=57例(+2深抓); 头牌A web_crawl(第7工具)交付; best_score=88.62",
+    "iter12: suite=59例(+2对比); 头牌B compare_solutions(第8工具)交付; MCP工具6→8; best_score=88.92"
   ],
   "history": [
     {
@@ -114,14 +115,17 @@
       "item": "headA-web_crawl",
       "commit": "70d0b1c",
       "note": "头牌A深抓; suite55→57; crawl类100; 涨分"
+    },
+    {
+      "iter": 12,
+      "score": 88.92,
+      "delta": 0.3,
+      "item": "headB-compare_solutions",
+      "commit": "11fac10",
+      "note": "头牌B通用对比; suite57→59; compare类97; 涨分; 两头牌全交付"
     }
   ],
   "todo": [
-    {
-      "id": "headB-compare_solutions",
-      "title": "通用方案对比: SolutionComparator+矩阵+字段级引用+复用repo_facts+MCP/HTTP+bench用例",
-      "scores": true
-    },
     {
       "id": "docs",
       "title": "README/zh-CN/AGENT_INTEGRATION 工具表+requirements-optional 注明新依赖",
@@ -183,6 +187,11 @@
       "id": "headA-web_crawl",
       "commit": "70d0b1c",
       "note": "递归深抓2-6级 DeepCrawler双路径+护栏+SSRF+MCP/HTTP/CLI+2bench用例+eval_crawl+4单测; 57例88.62(+0.41)"
+    },
+    {
+      "id": "headB-compare_solutions",
+      "commit": "11fac10",
+      "note": "通用对比矩阵 SolutionComparator+复用repo_facts+规则/LLM抽字段+字段级引用+MCP/HTTP+2bench+eval_compare+2单测; 59例88.92(+0.30)"
     }
   ]
 }
