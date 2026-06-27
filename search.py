@@ -93,6 +93,12 @@ DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
+# 批量抽取预算(可配): 宽召回(answer / 方案对比)场景的并发抽取上限。
+# 旧实现把 8 条 / 6 worker 写死, 宽召回时优质候选抽不到、answer 凑不够来源。
+EXTRACT_MAX_URLS = int(os.environ.get("EXTRACT_MAX_URLS", "12"))
+EXTRACT_CONCURRENCY = int(os.environ.get("EXTRACT_CONCURRENCY", "8"))
+EXTRACT_TIMEOUT_S = int(os.environ.get("EXTRACT_TIMEOUT_S", "20"))
+
 # SearXNG 默认启用的引擎 (settings.yml 中配置的)
 DEFAULT_ENGINES = [
     "google", "bing", "duckduckgo", "brave", "wikipedia",
@@ -1005,15 +1011,44 @@ class ContentExtractor:
         except Exception as e:
             return {"url": url, "markdown": "", "method_used": method, "error": str(e)}
 
-    def batch_extract(self, urls: list, method="auto") -> list:
-        """并行批量提取多个 URL 内容"""
+    def batch_extract(self, urls: list, method="auto",
+                      max_urls=None, concurrency=None, timeout_s=None) -> list:
+        """并行批量提取多个 URL 内容。
+
+        max_urls / concurrency / timeout_s 留空时取环境预算
+        (EXTRACT_MAX_URLS / EXTRACT_CONCURRENCY / EXTRACT_TIMEOUT_S)。
+        单个 URL 抽取超时不阻塞整体: 降级为 timeout 占位(上层会回退到 snippet);
+        返回顺序与输入对齐。总等待以 2×timeout_s 为软上限, 避免个别慢页拖垮全局。
+        """
+        import time as _time
         from concurrent.futures import ThreadPoolExecutor
 
-        urls = [clean_url(u) for u in urls[:8] if clean_url(u)]
+        cap = max_urls or EXTRACT_MAX_URLS
+        workers = concurrency or EXTRACT_CONCURRENCY
+        per_timeout = timeout_s or EXTRACT_TIMEOUT_S
+        urls = [clean_url(u) for u in urls[:cap] if clean_url(u)]
         if not urls:
             return []
-        with ThreadPoolExecutor(max_workers=min(6, len(urls))) as ex:
-            return list(ex.map(lambda u: self.extract(u, method), urls))
+
+        def _timeout_result(u):
+            return {"url": u, "markdown": "", "title": "", "method_used": "timeout",
+                    "error": f"抽取超时(>{per_timeout}s), 已降级"}
+
+        ex = ThreadPoolExecutor(max_workers=min(workers, len(urls)))
+        try:
+            futures = [ex.submit(self.extract, u, method) for u in urls]
+            deadline = _time.monotonic() + per_timeout * 2  # 全局软预算
+            out = []
+            for u, fut in zip(urls, futures):
+                remaining = max(0.1, deadline - _time.monotonic())
+                try:
+                    out.append(fut.result(timeout=remaining))
+                except Exception:
+                    out.append(_timeout_result(u))
+            return out
+        finally:
+            # 不在退出时 join 慢线程(它们各自带 REQUEST_TIMEOUT, 会自行收尾)
+            ex.shutdown(wait=False, cancel_futures=True)
 
 
 class SiteMapper:
@@ -1613,10 +1648,13 @@ class AgentSearch:
             return {"query": query, "error": "没有搜索到任何结果"}
 
         # 2. 抓正文
+        # candidates 已由 search() 按 result_rank_score 重排, 截断即保留高分候选;
+        # 抽取预算与 num_sources 挂钩(留 2x 缓冲), 避免旧实现写死 8 条凑不够来源。
         method = "crawl4ai" if deep else "auto"
         sources = []
         urls = [clean_url(r["url"]) for r in candidates]
-        extracted = self.extractor.batch_extract(urls, method=method)
+        extracted = self.extractor.batch_extract(
+            urls, method=method, max_urls=max(num_sources * 2, 8))
         for r, ext in zip(candidates, extracted):
             if len(sources) >= num_sources:
                 break
