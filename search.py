@@ -1901,6 +1901,24 @@ class AgentSearch:
                     resp.results = merged
                     resp.total = len(merged)
                     sys.stderr.write(f"[*] 容错: 本地纠错重搜 {variants}\n")
+
+            # 容错 L3: L1 后仍 0 结果 且配了 LLM → 让 LLM 只纠拼写(不改语义), 重搜并入
+            if (auto_rewrite and not resp.error and not resp.results
+                    and self.llm.is_configured()):
+                variants = self._llm_spelling_rewrite(query)
+                if variants:
+                    extra, _e, _n = self._multi_search(
+                        variants, engines, time_range=time_range, categories=categories,
+                        language=language, safe_search=safe_search)
+                    seen, merged = set(), []
+                    for r in extra:
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                    resp.results = merged
+                    resp.total = len(merged)
+                    sys.stderr.write(f"[*] 容错: LLM 纠拼写重搜 {variants}\n")
         else:
             resp = self.web_fallback.search(query, top_k)
 
@@ -1935,6 +1953,22 @@ class AgentSearch:
             result_dict["elapsed_ms"] = int((time.time() - t0) * 1000)
 
         return result_dict
+
+    def _llm_spelling_rewrite(self, query: str) -> list[str]:
+        """容错 L3: 用 LLM 只纠明显拼写错误(不改语义), 返回至多 2 个候选。无 key/失败→[]。"""
+        if not self.llm.is_configured():
+            return []
+        msgs = [
+            {"role": "system", "content":
+             "你是搜索查询纠错器。只纠正明显的拼写错误, 不改变语义、不增删词、不翻译。"
+             "每行输出一个候选, 最多 2 个, 不要任何解释。若原查询没有拼写错误, 原样输出一行。"},
+            {"role": "user", "content": query},
+        ]
+        out = self.llm.chat(msgs, temperature=0.0, max_tokens=60)
+        if not isinstance(out, dict) or out.get("error"):
+            return []
+        cands = [ln.strip() for ln in (out.get("content") or "").splitlines() if ln.strip()]
+        return [c for c in cands[:2] if c.lower() != query.strip().lower()]
 
     def stats(self) -> dict:
         """缓存统计"""

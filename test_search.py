@@ -359,6 +359,47 @@ class FuzzyCorrectTest(unittest.TestCase):
         self.assertEqual(fuzzy_correct_query("数据库 选型", set(COMMON_TECH_TERMS)), [])
 
 
+class FuzzyL3Test(unittest.TestCase):
+    def test_llm_rewrite_when_zero_results(self):
+        from search import SearchResponse
+
+        s = AgentSearch.__new__(AgentSearch)
+
+        class C:
+            def get_search(self, *a, **k):
+                return None
+
+            def set_search(self, *a, **k):
+                pass
+
+        class FS:
+            def is_available(self):
+                return False
+
+        class LLM:
+            def is_configured(self):
+                return True
+
+            def chat(self, messages, temperature=0.0, max_tokens=60):
+                return {"content": "kubernetes deployment"}
+
+        s.cache, s._prefer_searxng, s.flaresolverr, s.llm = C(), True, FS(), LLM()
+
+        def fake(q):
+            if q == "kubernetes deployment":  # LLM 纠正后才有结果
+                return SearchResponse(query=q, source="searxng", results=[
+                    SearchResult(title="Deployments", url="https://kubernetes.io/docs/")])
+            return SearchResponse(query=q, source="searxng", results=[])  # 原查询及 L1 变体 0 结果
+
+        class SX:
+            def search(self, q, engines=None, **k):
+                return fake(q)
+
+        s.searxng = SX()
+        res = s.search("zzkuberntes zzdeploymnt", top_k=10)  # 故意让 L1 词典纠不动
+        self.assertTrue(any("kubernetes.io" in r["url"] for r in res["results"]))
+
+
 class PlanQueriesTest(unittest.TestCase):
     def test_compare_intent_fans_out(self):
         from search import plan_queries
