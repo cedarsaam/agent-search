@@ -214,5 +214,45 @@ class SSRFGuardTest(unittest.TestCase):
                 os.environ["AGENT_SEARCH_RESOLVE_DNS"] = orig_flag
 
 
+class MultiSearchTest(unittest.TestCase):
+    def test_merges_dedups_and_counts_failures(self):
+        from search import SearchResponse
+
+        s = AgentSearch.__new__(AgentSearch)
+
+        class C:  # 假缓存: 永远 miss / no-op
+            def get_search(self, *a, **k):
+                return None
+
+            def set_search(self, *a, **k):
+                pass
+
+        s.cache = C()
+
+        def fake(q):
+            if q == "qerr":
+                return SearchResponse(query=q, error="boom")
+            if q == "q1":
+                return SearchResponse(query=q, results=[
+                    SearchResult(title="A", url="https://a.com/x"),
+                    SearchResult(title="B", url="https://b.com/y"),
+                ])
+            return SearchResponse(query=q, results=[
+                SearchResult(title="B2", url="https://b.com/y"),   # 与 q1 重复
+                SearchResult(title="C", url="https://c.com/z"),
+            ])
+
+        class SX:
+            def search(self, q, engines=None, **k):
+                return fake(q)
+
+        s.searxng = SX()
+        merged, perr, nfail = s._multi_search(["q1", "q2", "qerr"])
+        self.assertEqual([r.url for r in merged],
+                         ["https://a.com/x", "https://b.com/y", "https://c.com/z"])
+        self.assertIsNone(perr)       # 主查询 q1 成功
+        self.assertEqual(nfail, 1)    # qerr 失败被计数, 不静默吞
+
+
 if __name__ == "__main__":
     unittest.main()

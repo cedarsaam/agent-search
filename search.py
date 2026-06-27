@@ -1528,6 +1528,55 @@ class AgentSearch:
             out.append(item)
         return out
 
+    def _multi_search(self, queries, engines=None, *, time_range=None, categories=None,
+                      language=None, safe_search=None, max_workers=None):
+        """并发搜多个(子)查询, 每个子查询独立缓存, 合并去重(canonical_url)。
+
+        用于"找方案/对比"场景: 把多角度子查询一次并发打出去, 替代串行扩展。
+        返回 (merged_results, primary_error, n_failed):
+          merged_results — 去重后的 SearchResult 列表(按 queries 顺序);
+          primary_error  — 第一个查询的 error;
+          n_failed       — 失败子查询数(供诊断, 不再静默吞掉, 修 BUG-6)。
+        子查询缓存走 cache.get_search/set_search(带 subq 标记, 与顶层 query 缓存隔离);
+        评测桩会把 engine.cache 置空, 故 eval 下自动失效、不影响"每轮新鲜重跑"。
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        queries = list(dict.fromkeys(q for q in queries if q))
+        if not queries:
+            return [], None, 0
+        sub_opts = {"subq": True, "time_range": time_range,
+                    "categories": ",".join(categories) if categories else None,
+                    "language": language, "safe_search": safe_search}
+
+        def _one(q):
+            cached = self.cache.get_search(q, engines, **sub_opts)
+            if cached is not None:
+                return q, [SearchResult(**d) for d in cached.get("results", [])], None
+            resp = self.searxng.search(q, engines, time_range=time_range, categories=categories,
+                                       language=language, safe_search=safe_search)
+            if not resp.error:
+                self.cache.set_search(q, {"results": [r.to_dict() for r in resp.results]},
+                                      engines, **sub_opts)
+            return q, resp.results, resp.error
+
+        workers = max_workers or int(os.environ.get("MULTI_SEARCH_WORKERS", "4"))
+        by_query = {}
+        with ThreadPoolExecutor(max_workers=min(workers, len(queries))) as ex:
+            for q, results, err in ex.map(_one, queries):
+                by_query[q] = (results, err)
+
+        merged, seen = [], set()
+        for q in queries:
+            for r in by_query.get(q, ([], None))[0]:
+                key = canonical_url(r.url)
+                if r.url and key not in seen:
+                    seen.add(key)
+                    merged.append(r)
+        primary_error = by_query[queries[0]][1]
+        n_failed = sum(1 for _, e in by_query.values() if e)
+        return merged, primary_error, n_failed
+
     def search(self, query: str, engines=None, top_k=10, extract=False, deep=False,
                use_flaresolverr=False, time_range=None, categories=None,
                language=None, safe_search=None, rerank=True, auto_rewrite=True) -> dict:
@@ -1585,23 +1634,24 @@ class AgentSearch:
                 language=language,
                 safe_search=safe_search,
             )
-            # 多查询扩展: 对文档/价格意图的查询追加通用增强查询, 合并候选后统一重排
+            # 多查询扩展: 把通用增强查询并发打出去(替代串行循环, 修 BUG-6 不再静默吞错),
+            # 合并进主结果后统一去重; P0-3 起 query_expansions 升级为多角度 plan 时复用此并发原语。
             if auto_rewrite and not resp.error:
-                for aug_q in query_expansions(query):
-                    aug = self.searxng.search(
-                        aug_q, engines, time_range=time_range, categories=categories,
-                        language=language, safe_search=safe_search,
-                    )
-                    if not aug.error and aug.results:
-                        resp.results.extend(aug.results)
-                seen, deduped = set(), []
-                for r in resp.results:
-                    key = canonical_url(r.url)
-                    if r.url and key not in seen:
-                        seen.add(key)
-                        deduped.append(r)
-                resp.results = deduped
-                resp.total = len(deduped)
+                expansions = query_expansions(query)
+                if expansions:
+                    extra, _perr, n_failed = self._multi_search(
+                        expansions, engines, time_range=time_range, categories=categories,
+                        language=language, safe_search=safe_search)
+                    merged, seen = [], set()
+                    for r in list(resp.results) + extra:
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                    resp.results = merged
+                    resp.total = len(merged)
+                    if n_failed:
+                        sys.stderr.write(f"[*] 扩展查询 {n_failed} 条失败(已忽略)\n")
         else:
             resp = self.web_fallback.search(query, top_k)
 
