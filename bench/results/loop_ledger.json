@@ -1,7 +1,7 @@
 {
-  "iter": 5,
+  "iter": 6,
   "best_score": 87.77,
-  "best_commit": "cea2add",
+  "best_commit": "0bd75c8",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -55,14 +55,17 @@
       "item": "P0-3",
       "commit": "cea2add",
       "note": "对比意图多角度扇出; 首次涨分; suite 50→53例(best_score 重定为53例口径)"
+    },
+    {
+      "iter": 5,
+      "score": 87.77,
+      "delta": 0,
+      "item": "BUG-3",
+      "commit": "0bd75c8",
+      "note": "BUG-3收尾(P0-3已覆盖)+schema v7"
     }
   ],
   "todo": [
-    {
-      "id": "BUG-3",
-      "title": "cache_options 补 auto_rewrite/或 bump CACHE_SCHEMA_VERSION",
-      "scores": false
-    },
     {
       "id": "P0-4",
       "title": "_clean_text 加样板过滤层(cookie/登录/版权/纯链接块)",
@@ -124,6 +127,11 @@
       "id": "P0-3",
       "commit": "cea2add",
       "note": "plan_queries对比fan-out+expand_mode+weight_map; 53例87.77(+0.41); 3新对比用例"
+    },
+    {
+      "id": "BUG-3",
+      "commit": "0bd75c8",
+      "note": "expand_mode已覆盖auto_rewrite维度; bump schema v7+单测锁键"
     }
   ]
 }
