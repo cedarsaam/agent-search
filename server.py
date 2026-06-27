@@ -103,6 +103,15 @@ class GitHubCompareReq(BaseModel):
     limit: int = 5
 
 
+class CompareReq(BaseModel):
+    topic: str = ""
+    candidates: Optional[list[str]] = None
+    dimensions: Optional[list[str]] = None
+    num_sources: int = 3
+    use_llm: bool = False
+    deep: bool = False
+
+
 class TavilySearchReq(BaseModel):
     query: str
     max_results: int = 10
@@ -176,6 +185,14 @@ def github(req: GitHubReq):
 def github_compare(req: GitHubCompareReq):
     """技术选型对比：GitHub API 一手事实 + OpenSSF Scorecard 健康分，不下结论。"""
     return get_engine().github_compare(repos=req.repos, query=req.query, limit=req.limit)
+
+
+@app.post("/compare")
+def compare_solutions(req: CompareReq):
+    """通用方案对比矩阵：任意候选拉齐成矩阵，每格带来源可追溯(GitHub 候选取一手事实)。"""
+    return get_engine().compare_solutions(
+        topic=req.topic, candidates=req.candidates, dimensions=req.dimensions,
+        num_sources=req.num_sources, use_llm=req.use_llm, deep=req.deep)
 
 
 @app.post("/tavily/search")

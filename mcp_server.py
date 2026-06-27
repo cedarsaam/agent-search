@@ -176,6 +176,31 @@ def github_compare(repos: list[str] = [], query: str = "", limit: int = 5) -> di
 
 
 @mcp.tool()
+def compare_solutions(topic: str = "", candidates: list = [], dimensions: list = [],
+                      num_sources: int = 3, use_llm: bool = False) -> dict:
+    """通用方案对比：把任意候选(开源库/SaaS/云服务/框架)拉齐成对比矩阵，每格带来源可追溯。
+
+    做"选型/对比"时用：给一组 candidates(或一个 topic 让它发现候选)，按维度拉齐成矩阵。
+    GitHub 仓库候选会自动取一手事实(license/最新 release/维护活跃度/OpenSSF 健康分, confidence=official)；
+    非 GitHub 方案走官方页抽取(定价/版本/许可等规则抽取, confidence=secondary)。每格带 source_url+excerpt。
+
+    与 github_compare 的区别：纯 GitHub 仓库且只要健康分用 github_compare(更快)；
+    含非 GitHub / 要定价 / 要适用场景用本工具(更全, 字段级引用)。结论由你/用户判断，本工具只给证据。
+
+    Args:
+        topic: 对比主题(不给 candidates 时用它发现候选)，如 "python web framework"
+        candidates: 候选列表，"owner/repo"(GitHub) 或产品名/官网域名；给了就直接对比这些
+        dimensions: 对比维度，留空用默认[最新版本/定价/许可/维护活跃度/性能/生态/适用场景]
+        num_sources: 每个候选抓取的来源数(默认 3)
+        use_llm: 是否用 LLM 补抽软维度(性能/适用场景等，需配 LLM key；默认 False 只走规则+一手事实)
+    """
+    return engine().compare_solutions(
+        topic=topic, candidates=list(candidates) or None,
+        dimensions=list(dimensions) or None, num_sources=num_sources, use_llm=use_llm,
+    )
+
+
+@mcp.tool()
 def web_extract(url: str, deep: bool = False) -> dict:
     """抓取指定网页正文并转成 Markdown。
 

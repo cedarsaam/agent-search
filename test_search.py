@@ -287,6 +287,39 @@ class MultiSearchTest(unittest.TestCase):
         self.assertEqual(nfail, 1)    # qerr 失败被计数, 不静默吞
 
 
+class SolutionComparatorTest(unittest.TestCase):
+    def test_github_candidate_official_fields(self):
+        from search import SolutionComparator
+
+        class FakeGH:
+            def repo_facts(self, repo):
+                return {"repo": repo, "license": "MIT", "latest_release": "1.2.3",
+                        "days_since_commit": 5, "scorecard_overall": 8.0, "homepage": "", "flags": []}
+
+        class FakeEngine:
+            github = FakeGH()
+
+        r = SolutionComparator(FakeEngine()).compare(
+            candidates=["owner/repo"], dimensions=["许可", "最新版本", "维护活跃度"])
+        self.assertEqual([c["name"] for c in r["candidates"]], ["owner/repo"])
+        lic = r["matrix"]["许可"][0]
+        self.assertEqual(lic["value"], "MIT")
+        self.assertEqual(lic["confidence"], "official")   # GitHub 一手事实
+        self.assertTrue(lic["source_url"])                # 可追溯
+        self.assertEqual(r["matrix"]["最新版本"][0]["value"], "1.2.3")
+        self.assertIn("OpenSSF 8.0", r["matrix"]["维护活跃度"][0]["value"])
+
+    def test_no_candidates_returns_error(self):
+        from search import SolutionComparator
+
+        class FakeEngine:
+            pass
+
+        r = SolutionComparator(FakeEngine()).compare(candidates=[], topic="")
+        self.assertTrue(r["error"])
+        self.assertEqual(r["candidates"], [])
+
+
 class DeepCrawlerTest(unittest.TestCase):
     def _ext(self):
         class Ext:

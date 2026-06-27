@@ -1858,6 +1858,165 @@ class DeepSeekClient:
 
 
 # ================================================================
+# 通用方案对比 (compare_solutions) — 任意方案拉齐成对比矩阵, 每格带来源可追溯
+# ================================================================
+
+SPDX_LICENSES = ("AGPL-3.0", "GPL-3.0", "GPL-2.0", "LGPL-3.0", "MPL-2.0", "Apache-2.0",
+                 "BSD-3-Clause", "BSD-2-Clause", "MIT", "ISC", "Unlicense", "EPL-2.0")
+
+
+class SolutionComparator:
+    """通用方案对比: 把任意候选(开源库/SaaS/框架/做法)拉齐成对比矩阵, 每格带来源+证据可追溯。
+
+    与 github_compare 的边界: 纯 GitHub 仓库选型且要 OpenSSF 健康分用 github_compare(更快、更准);
+    含非 GitHub 方案 / 要定价 / 要适用场景, 用 compare_solutions(更全, 字段级引用)。
+    复用: github.repo_facts(一手事实)、_multi_search(发现/定位官方页)、result_rank_score(选官方页)、
+    batch_extract(抽正文)、PRICE_INTENT_RE/_relevant_excerpt(规则抽字段)、DeepSeek(可选 LLM 补软维度)。
+    """
+
+    DEFAULT_DIMS = ["最新版本", "定价", "许可", "维护活跃度", "性能", "生态/集成", "适用场景"]
+
+    def __init__(self, engine):
+        self.e = engine
+
+    def compare(self, topic="", candidates=None, dimensions=None, num_sources=3,
+                use_llm=False, deep=False) -> dict:
+        dims = [d for d in (dimensions or self.DEFAULT_DIMS) if d]
+        cands = list(dict.fromkeys(c.strip() for c in (candidates or []) if c and c.strip()))
+        if not cands and topic:
+            cands = self._discover(topic)
+        if not cands:
+            return {"topic": topic, "dimensions": dims, "candidates": [], "matrix": {},
+                    "note": "请提供 candidates, 或给可发现候选的 topic", "error": "无候选"}
+        cands = cands[:8]
+
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(6, len(cands))) as ex:
+            cand_results = list(ex.map(lambda c: self._one(c, dims, use_llm), cands))
+
+        matrix = {}
+        for dim in dims:
+            matrix[dim] = [{"candidate": cr["name"], "value": (cr["fields"].get(dim) or {}).get("value"),
+                            "source_url": (cr["fields"].get(dim) or {}).get("source_url"),
+                            "confidence": (cr["fields"].get(dim) or {}).get("confidence")}
+                           for cr in cand_results]
+        return {"topic": topic, "dimensions": dims, "candidates": cand_results, "matrix": matrix,
+                "note": "一手事实(GitHub API/OpenSSF)+规则/LLM 抽取; 每格带来源可追溯; 仅供选型参考, 不替你下结论",
+                "error": None}
+
+    def _discover(self, topic):
+        merged, _e, _n = self.e._multi_search(
+            [topic] + [p[0] for p in plan_queries(topic, "compare")])
+        names, skip = [], ("github", "youtube", "reddit", "medium", "stackoverflow", "zhihu", "csdn")
+        for r in merged[:12]:
+            host = urlparse(r.url).netloc.lower().removeprefix("www.")
+            part = host.split(".")[0] if host else ""
+            if part and part not in skip and part not in names:
+                names.append(part)
+        return names[:5]
+
+    def _one(self, name, dims, use_llm):
+        fields = {d: {"value": None, "source_url": None, "excerpt": None, "confidence": None} for d in dims}
+        out = {"name": name, "official_url": None, "repo": None, "fields": fields, "flags": []}
+
+        repo = normalize_repo_slug(name) if "/" in name else None
+        facts = None
+        if repo and len(repo.split("/")) == 2:
+            facts = self.e.github.repo_facts(repo)
+            if facts and not facts.get("error"):
+                out["repo"] = facts.get("repo")
+                out["official_url"] = facts.get("homepage") or f"https://github.com/{facts.get('repo')}"
+                out["flags"] = facts.get("flags", [])
+                self._fill_from_facts(fields, facts, f"https://github.com/{facts.get('repo')}")
+            else:
+                facts = None
+
+        # 非 GitHub, 或 GitHub 没覆盖的维度(定价/性能/适用场景) → 网页补充
+        if facts is None or any(fields[d]["value"] is None for d in dims):
+            try:
+                self._fill_from_web(name, fields, dims, use_llm, out)
+            except Exception:
+                pass
+        return out
+
+    def _fill_from_facts(self, fields, facts, src):
+        def setf(dim, val, conf="official"):
+            if dim in fields and val and fields[dim]["value"] is None:
+                fields[dim].update({"value": str(val), "source_url": src, "confidence": conf})
+        setf("最新版本", facts.get("latest_release"))
+        setf("许可", facts.get("license"))
+        dsc = facts.get("days_since_commit")
+        if dsc is not None:
+            v = f"近{dsc}天有提交" if dsc <= 365 else f"近{dsc}天无提交"
+            sc = facts.get("scorecard_overall")
+            if sc is not None:
+                v += f" / OpenSSF {sc}"
+            setf("维护活跃度", v)
+
+    def _fill_from_web(self, name, fields, dims, use_llm, out):
+        merged, _e, _n = self.e._multi_search([f"{name} official", f"{name} pricing documentation"])
+        if not merged:
+            return
+        ranked = self.e._result_dicts(name, merged, top_k=4, rerank=True)
+        urls = [r["url"] for r in ranked]
+        if not out["official_url"] and urls:
+            out["official_url"] = urls[0]
+        exts = self.e.extractor.batch_extract(urls[:3], max_urls=3)
+        body, body_url = "", out["official_url"]
+        for u, ext in zip(urls[:3], exts):
+            md = ext.get("markdown", "")
+            if md and text_quality_ok(md):
+                body, body_url = md, u
+                break
+        if not body:
+            return
+        self._rule_extract(fields, body, body_url, name)
+        if use_llm and self.e.llm.is_configured():
+            self._llm_extract(fields, body, body_url, name, dims)
+
+    def _rule_extract(self, fields, body, url, name):
+        excerpt = re.sub(r"\s+", " ", self.e.llm._relevant_excerpt(name, body, max_chars=280)).strip()[:280]
+
+        def setf(dim, val, conf="secondary"):
+            if dim in fields and val and fields[dim]["value"] is None:
+                fields[dim].update({"value": val[:80], "source_url": url, "excerpt": excerpt, "confidence": conf})
+
+        if PRICE_INTENT_RE.search(body):
+            m = re.search(r"(免费|free|\$\s?\d[\d,.]*\s*(?:/|per)?\s*(?:month|mo|year|yr|seat|user|月|年)?|\d+\s*元)", body, re.I)
+            if m:
+                setf("定价", m.group(0))
+        m = re.search(r"\bv(?:ersion)?\.?\s*(\d+\.\d+(?:\.\d+)?)\b|\b(\d+\.\d+\.\d+)\b", body, re.I)
+        if m:
+            setf("最新版本", m.group(1) or m.group(2))
+        for lic in SPDX_LICENSES:
+            if re.search(re.escape(lic), body, re.I):
+                setf("许可", lic)
+                break
+
+    def _llm_extract(self, fields, body, url, name, dims):
+        excerpt = re.sub(r"\s+", " ", self.e.llm._relevant_excerpt(name, body, max_chars=2000)).strip()
+        sys_p = ("你从资料中抽取某方案的事实, 输出一个 JSON 对象, 键为给定维度, 值为简短中文事实或 null。"
+                 "严格不编造, 资料没提到就填 null, 不要任何解释、不要代码块外的文字。")
+        user_p = f"方案: {name}\n维度: {dims}\n资料:\n{excerpt}"
+        out = self.e.llm.chat([{"role": "system", "content": sys_p}, {"role": "user", "content": user_p}],
+                              temperature=0.0, max_tokens=400)
+        if not isinstance(out, dict) or out.get("error"):
+            return
+        m = re.search(r"\{.*\}", out.get("content", ""), re.S)
+        if not m:
+            return
+        try:
+            data = json.loads(m.group(0))
+        except Exception:
+            return
+        for dim in dims:
+            v = data.get(dim)
+            if v and isinstance(v, (str, int, float)) and fields.get(dim, {}).get("value") is None:
+                fields[dim].update({"value": str(v)[:120], "source_url": url,
+                                    "excerpt": excerpt[:280], "confidence": "llm"})
+
+
+# ================================================================
 # 主搜索入口
 # ================================================================
 
@@ -1874,6 +2033,7 @@ class AgentSearch:
         self.deep_crawler = DeepCrawler(self.extractor, self.mapper)
         self.llm = DeepSeekClient()
         self.github = GitHubEngine()
+        self.comparator = SolutionComparator(self)
         self._prefer_searxng = False
 
         # 检测后端可用性
@@ -2199,6 +2359,13 @@ class AgentSearch:
     def github_compare(self, repos=None, query=None, limit=5) -> dict:
         """技术选型对比：拉齐多个 GitHub 项目的一手事实 + 成熟度信号，不下结论。"""
         return self.github.compare(repos=repos, query=query, limit=limit)
+
+    def compare_solutions(self, topic="", candidates=None, dimensions=None,
+                          num_sources=3, use_llm=False, deep=False) -> dict:
+        """通用方案对比矩阵：任意候选(开源库/SaaS/框架)拉齐成对比矩阵，每格带来源可追溯。"""
+        return self.comparator.compare(
+            topic=topic, candidates=candidates, dimensions=dimensions,
+            num_sources=num_sources, use_llm=use_llm, deep=deep)
 
     def answer(self, query: str, engines=None, num_sources=4, deep=False,
                use_flaresolverr=False, time_range=None, categories=None,

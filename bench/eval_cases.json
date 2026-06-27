@@ -1184,5 +1184,49 @@
     "requires_flaresolverr": false,
     "requires_deep": true,
     "notes": "递归深抓: FastAPI 文档站抓>=2页且有正文、同域(验证深抓另一站点)"
+  },
+  {
+    "id": "cmp_web_frameworks",
+    "type": "compare",
+    "candidates": [
+      "tiangolo/fastapi",
+      "pallets/flask"
+    ],
+    "dimensions": [
+      "许可",
+      "最新版本",
+      "维护活跃度"
+    ],
+    "must_include_terms": [],
+    "expected_domains": [],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "通用对比: GitHub 候选 fastapi/flask 取一手事实填矩阵(许可/版本/维护),每格 confidence=official 带来源"
+  },
+  {
+    "id": "cmp_orm_libs",
+    "type": "compare",
+    "candidates": [
+      "sqlalchemy/sqlalchemy",
+      "django/django"
+    ],
+    "dimensions": [
+      "许可",
+      "最新版本",
+      "维护活跃度"
+    ],
+    "must_include_terms": [],
+    "expected_domains": [],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "通用对比: 另一组 GitHub 候选验证矩阵稳定"
   }
 ]

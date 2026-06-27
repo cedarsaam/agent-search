@@ -422,6 +422,47 @@ def eval_crawl(engine, case, budget):
     }
 
 
+def eval_compare(engine, case, budget):
+    """通用对比: 验证候选数对、矩阵维度齐、字段填充率、来源可追溯。"""
+    if getattr(budget, "offline", False):
+        return None
+    res = engine.compare_solutions(
+        topic=case.get("query", ""), candidates=case.get("candidates"),
+        dimensions=case.get("dimensions"), use_llm=False)
+    if res.get("error"):
+        return {"score": 0.0, "observed_domains": [], "matched_terms": [],
+                "source_urls": [], "detail": {"error": res["error"]}, "extra": {}}
+    cands = res.get("candidates", []) or []
+    dims = res.get("dimensions", []) or []
+    matrix = res.get("matrix", {}) or {}
+    cells = [c for d in matrix for c in matrix[d]]
+    filled = sum(1 for c in cells if c.get("value"))
+    with_src = sum(1 for c in cells if c.get("value") and c.get("source_url"))
+    pts = max_pts = 0.0
+    detail = {}
+
+    expected_n = len(case.get("candidates") or []) or len(cands)
+    max_pts += 2; pts += 2 if cands and len(cands) == expected_n else (1 if cands else 0)
+    detail["candidate_count"] = len(cands)
+
+    max_pts += 1; pts += 1 if dims and all(d in matrix for d in dims) else 0
+    detail["dims_present"] = len(matrix)
+
+    ratio = filled / len(cells) if cells else 0
+    max_pts += 2; pts += 2 * ratio
+    detail["filled_ratio"] = round(ratio, 2)
+
+    max_pts += 1; pts += 1 * (with_src / filled) if filled else 0
+    detail["src_traceable"] = round((with_src / filled) if filled else 0, 2)
+
+    score = pts / max_pts if max_pts else 0.0
+    return {
+        "score": round(score, 4), "observed_domains": [], "matched_terms": [],
+        "source_urls": [c.get("official_url") for c in cands if c.get("official_url")][:5],
+        "detail": detail, "extra": {},
+    }
+
+
 EVALUATORS = {
     "search": eval_search,
     "ask": eval_ask,
@@ -429,6 +470,7 @@ EVALUATORS = {
     "map": eval_map,
     "github": eval_github,
     "crawl": eval_crawl,
+    "compare": eval_compare,
 }
 
 
