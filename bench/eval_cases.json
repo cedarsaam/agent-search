@@ -1104,5 +1104,43 @@
     "requires_flaresolverr": false,
     "requires_deep": false,
     "notes": "对比意图 fan-out: Python web 框架选型, 验证中文'哪个好/选型'触发对比扇出"
+  },
+  {
+    "id": "f_typo_kubernetes",
+    "type": "search",
+    "query": "kuberntes deployment guide",
+    "expected_domains": [
+      "kubernetes.io"
+    ],
+    "must_include_terms": [
+      "Kubernetes",
+      "deployment"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "容错: 拼错 kuberntes 仍应命中 kubernetes.io(引擎容错或纠错重搜)"
+  },
+  {
+    "id": "f_typo_python_async",
+    "type": "search",
+    "query": "pyton asyncio coroutines",
+    "expected_domains": [
+      "docs.python.org",
+      "realpython.com"
+    ],
+    "must_include_terms": [
+      "asyncio"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "容错: 拼错 pyton 仍应命中 Python 官方 asyncio 文档"
   }
 ]

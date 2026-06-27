@@ -287,6 +287,51 @@ class MultiSearchTest(unittest.TestCase):
         self.assertEqual(nfail, 1)    # qerr 失败被计数, 不静默吞
 
 
+class FuzzyL0Test(unittest.TestCase):
+    def test_sparse_plus_corrections_triggers_research(self):
+        from search import SearchResponse
+
+        s = AgentSearch.__new__(AgentSearch)
+
+        class C:
+            def get_search(self, *a, **k):
+                return None
+
+            def set_search(self, *a, **k):
+                pass
+
+        class FS:
+            def is_available(self):
+                return False
+
+        s.cache = C()
+        s._prefer_searxng = True
+        s.flaresolverr = FS()
+        calls = []
+
+        def fake(q):
+            calls.append(q)
+            if q == "skil":  # 拼错: 1 条无关结果 + 引擎给纠正词 skill
+                return SearchResponse(query=q, source="searxng", corrections=["skill"],
+                                      results=[SearchResult(title="SKIL power tools", url="https://skil.com/")])
+            if q == "skill":  # 纠正后: 多条正确结果
+                return SearchResponse(query=q, source="searxng", results=[
+                    SearchResult(title="Skills - Claude", url="https://code.claude.com/docs/skills"),
+                    SearchResult(title="Skill guide", url="https://example.com/skill"),
+                ])
+            return SearchResponse(query=q, source="searxng")
+
+        class SX:
+            def search(self, q, engines=None, **k):
+                return fake(q)
+
+        s.searxng = SX()
+        res = s.search("skil", top_k=10)
+        urls = [r["url"] for r in res["results"]]
+        self.assertIn("skill", calls)                          # 触发了纠正重搜
+        self.assertTrue(any("claude.com" in u for u in urls))  # 纠正结果已并入
+
+
 class PlanQueriesTest(unittest.TestCase):
     def test_compare_intent_fans_out(self):
         from search import plan_queries

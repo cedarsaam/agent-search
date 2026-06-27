@@ -358,6 +358,9 @@ COMPARE_INTENT_RE = re.compile(
 
 PLAN_MAX_SUBQ = int(os.environ.get("PLAN_MAX_SUBQ", "5"))
 
+# 容错搜索: 结果数低于此阈值才触发"纠错重搜"(短路, 正常查询零额外开销)
+FUZZY_MIN_RESULTS = int(os.environ.get("FUZZY_MIN_RESULTS", "3"))
+
 
 def plan_queries(query: str, mode: str = "auto") -> list[tuple]:
     """把查询规划成 (子查询, 权重, 标签) 列表(不含原查询)。
@@ -471,6 +474,8 @@ class SearchResponse:
     elapsed_ms: int = 0
     engines_used: list = field(default_factory=list)
     error: Optional[str] = None
+    corrections: list = field(default_factory=list)   # SearXNG 拼写纠正词(brave spellcheck 等引擎贡献)
+    suggestions: list = field(default_factory=list)   # SearXNG 相关查询建议
 
 
 # ================================================================
@@ -656,12 +661,20 @@ class SearXNGEngine:
                     seen.add(key)
                     deduped.append(r)
 
+            # 拼写纠正/相关建议(每项形如 {"title": 词, "url": 表单值}, 取 title 才是干净 query)
+            corrections = [c.get("title", "").strip() for c in data.get("corrections", [])
+                           if isinstance(c, dict) and c.get("title", "").strip()]
+            suggestions = [s.get("title", "").strip() for s in data.get("suggestions", [])
+                           if isinstance(s, dict) and s.get("title", "").strip()]
+
             return SearchResponse(
                 query=query,
                 results=deduped,
                 total=len(deduped),
                 source="searxng",
                 engines_used=list(set(r.engine for r in deduped if r.engine)),
+                corrections=corrections,
+                suggestions=suggestions,
             )
 
         except requests.exceptions.ConnectionError:
@@ -1772,6 +1785,24 @@ class AgentSearch:
                     resp.total = len(merged)
                     if n_failed:
                         sys.stderr.write(f"[*] 扩展查询 {n_failed} 条失败(已忽略)\n")
+
+            # 容错 L0: 结果仍稀少且引擎给了拼写纠正 → 用纠正词重搜并入(合并进原 query, 缓存键不变)
+            if (auto_rewrite and not resp.error and resp.corrections
+                    and len(resp.results) < FUZZY_MIN_RESULTS):
+                corr = resp.corrections[0]
+                if corr and corr.lower() != query.strip().lower():
+                    extra, _e, _n = self._multi_search(
+                        [corr], engines, time_range=time_range, categories=categories,
+                        language=language, safe_search=safe_search)
+                    merged, seen = [], set()
+                    for r in list(resp.results) + extra:
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                    resp.results = merged
+                    resp.total = len(merged)
+                    sys.stderr.write(f"[*] 容错: 结果稀少, 用纠正词重搜 '{corr}'\n")
         else:
             resp = self.web_fallback.search(query, top_k)
 
