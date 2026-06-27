@@ -55,7 +55,7 @@ except ImportError:
 SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://localhost:8888")
 CACHE_DIR = os.environ.get("CACHE_DIR", os.path.expanduser("~/.cache/agent-search"))
 CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL", "3600"))  # 1h default
-CACHE_SCHEMA_VERSION = 6
+CACHE_SCHEMA_VERSION = 7  # v7: cache_options 纳入 expand_mode(覆盖 auto_rewrite 维度, 修 BUG-3)
 JINA_READER = "https://r.jina.ai"     # URL→Markdown (免费)
 REQUEST_TIMEOUT = 15
 

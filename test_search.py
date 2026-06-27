@@ -14,6 +14,13 @@ class CacheKeyTest(unittest.TestCase):
         self.assertNotEqual(searx_key, flare_key)
         self.assertNotEqual(searx_key, more_key)
 
+    def test_cache_key_distinguishes_expand_mode(self):
+        # BUG-3: auto_rewrite 经 expand_mode(off/auto) 进缓存键, 不同扩展行为不再撞缓存
+        cache = SearchCache(db_path=":memory:")
+        off_key = cache._make_key("q", backend="searxng", expand_mode="off")
+        auto_key = cache._make_key("q", backend="searxng", expand_mode="auto")
+        self.assertNotEqual(off_key, auto_key)
+
 
 class UrlCleanTest(unittest.TestCase):
     def test_clean_url_removes_trailing_backslash_noise(self):
