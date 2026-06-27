@@ -1,7 +1,7 @@
 {
-  "iter": 6,
+  "iter": 7,
   "best_score": 87.77,
-  "best_commit": "0bd75c8",
+  "best_commit": "e4d964a",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -63,14 +63,17 @@
       "item": "BUG-3",
       "commit": "0bd75c8",
       "note": "BUG-3收尾(P0-3已覆盖)+schema v7"
+    },
+    {
+      "iter": 6,
+      "score": 87.77,
+      "delta": 0,
+      "item": "P0-4",
+      "commit": "e4d964a",
+      "note": "正文样板过滤; extract质量率1.0; 25单测"
     }
   ],
   "todo": [
-    {
-      "id": "P0-4",
-      "title": "_clean_text 加样板过滤层(cookie/登录/版权/纯链接块)",
-      "scores": true
-    },
     {
       "id": "P0-5",
       "title": "trafilatura favor_recall 参数化+requests兜底接readability",
@@ -132,6 +135,11 @@
       "id": "BUG-3",
       "commit": "0bd75c8",
       "note": "expand_mode已覆盖auto_rewrite维度; bump schema v7+单测锁键"
+    },
+    {
+      "id": "P0-4",
+      "commit": "e4d964a",
+      "note": "_is_boilerplate_line样板过滤(只删短行命中,保段落)+单测; eval无回退,收益在真实脏页"
     }
   ]
 }
