@@ -1,7 +1,7 @@
 {
-  "iter": 7,
+  "iter": 8,
   "best_score": 87.77,
-  "best_commit": "e4d964a",
+  "best_commit": "2cb7601",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -71,14 +71,17 @@
       "item": "P0-4",
       "commit": "e4d964a",
       "note": "正文样板过滤; extract质量率1.0; 25单测"
+    },
+    {
+      "iter": 7,
+      "score": 87.77,
+      "delta": 0,
+      "item": "P0-5",
+      "commit": "2cb7601",
+      "note": "抽取召回优先+readability; 收益在装依赖的真实抓取"
     }
   ],
   "todo": [
-    {
-      "id": "P0-5",
-      "title": "trafilatura favor_recall 参数化+requests兜底接readability",
-      "scores": true
-    },
     {
       "id": "Fuzzy-L0",
       "title": "brave spellcheck+读corrections/suggestions+稀少时纠错重搜",
@@ -140,6 +143,11 @@
       "id": "P0-4",
       "commit": "e4d964a",
       "note": "_is_boilerplate_line样板过滤(只删短行命中,保段落)+单测; eval无回退,收益在真实脏页"
+    },
+    {
+      "id": "P0-5",
+      "commit": "2cb7601",
+      "note": "trafilatura召回优先+readability兜底(均可选依赖静默降级); eval无回退"
     }
   ]
 }
