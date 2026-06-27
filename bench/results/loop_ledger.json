@@ -1,7 +1,7 @@
 {
-  "iter": 4,
-  "best_score": 87.36,
-  "best_commit": "ef1ba5d",
+  "iter": 5,
+  "best_score": 87.77,
+  "best_commit": "cea2add",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -12,7 +12,8 @@
     "baseline 87.36 (47/50 passed), failed: s_news_ai_industry_cn, m_react_dev, s_seo_best_programming_language",
     "type_scores baseline: search 83.41, ask 81.48, github 100, extract 100, map 75",
     "worktree 无 .env(gitignore), 评测前 source 父仓 .env 拿 DeepSeek key",
-    "bench/cache 已填充, 后续评测网络走缓存(排序/清洗/打分新鲜重跑)"
+    "bench/cache 已填充, 后续评测网络走缓存(排序/清洗/打分新鲜重跑)",
+    "iter4 起 suite=53例, best_score 口径同步为53例(加了3条对比用例)"
   ],
   "history": [
     {
@@ -46,14 +47,17 @@
       "item": "P0-2",
       "commit": "ef1ba5d",
       "note": "并发扩展替代串行; 基建项无回退; 18单测"
+    },
+    {
+      "iter": 4,
+      "score": 87.77,
+      "delta": 0.41,
+      "item": "P0-3",
+      "commit": "cea2add",
+      "note": "对比意图多角度扇出; 首次涨分; suite 50→53例(best_score 重定为53例口径)"
     }
   ],
   "todo": [
-    {
-      "id": "P0-3",
-      "title": "plan_queries 对比意图加权fan-out+expand_mode, web_search暴露",
-      "scores": true
-    },
     {
       "id": "BUG-3",
       "title": "cache_options 补 auto_rewrite/或 bump CACHE_SCHEMA_VERSION",
@@ -115,6 +119,11 @@
       "id": "P0-2",
       "commit": "ef1ba5d",
       "note": "_multi_search 并发原语+子查询缓存+BUG-6; 注入假searxng单测"
+    },
+    {
+      "id": "P0-3",
+      "commit": "cea2add",
+      "note": "plan_queries对比fan-out+expand_mode+weight_map; 53例87.77(+0.41); 3新对比用例"
     }
   ]
 }
