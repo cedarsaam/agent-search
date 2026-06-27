@@ -1,7 +1,7 @@
 {
-  "iter": 2,
+  "iter": 3,
   "best_score": 87.36,
-  "best_commit": "6142f48",
+  "best_commit": "76fd110",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -15,24 +15,98 @@
     "bench/cache 已填充, 后续评测网络走缓存(排序/清洗/打分新鲜重跑)"
   ],
   "history": [
-    {"iter": 0, "score": 87.36, "delta": 0, "item": "baseline", "commit": "4828daf", "note": "online full suite"},
-    {"iter": 1, "score": 87.36, "delta": 0, "item": "P0-1", "commit": "6142f48", "note": "batch_extract 解耦+evalcache桩兼容; 基建项无回退即通过; 顺带修 evalcache capped_batch 不接 **kwargs 的隐藏兼容 bug"}
+    {
+      "iter": 0,
+      "score": 87.36,
+      "delta": 0,
+      "item": "baseline",
+      "commit": "4828daf",
+      "note": "online full suite"
+    },
+    {
+      "iter": 1,
+      "score": 87.36,
+      "delta": 0,
+      "item": "P0-1",
+      "commit": "6142f48",
+      "note": "batch_extract 解耦+evalcache桩兼容; 基建项无回退即通过; 顺带修 evalcache capped_batch 不接 **kwargs 的隐藏兼容 bug"
+    },
+    {
+      "iter": 2,
+      "score": 87.36,
+      "delta": 0,
+      "item": "BUG-2",
+      "commit": "76fd110",
+      "note": "SSRF 加固; 基建项无回退; 踩坑: 本机fake-ip把公网解析到198.18/15,DNS校验改默认关"
+    }
   ],
   "todo": [
-    {"id": "BUG-2", "title": "SSRF: allow_redirects=False+重定向复检+getaddrinfo 解析+trafilatura自抓", "scores": false},
-    {"id": "P0-2", "title": "_multi_search 并发原语+子查询独立缓存, 替换串行扩展循环(含BUG-6)", "scores": false},
-    {"id": "P0-3", "title": "plan_queries 对比意图加权fan-out+expand_mode, web_search暴露", "scores": true},
-    {"id": "BUG-3", "title": "cache_options 补 auto_rewrite/或 bump CACHE_SCHEMA_VERSION", "scores": false},
-    {"id": "P0-4", "title": "_clean_text 加样板过滤层(cookie/登录/版权/纯链接块)", "scores": true},
-    {"id": "P0-5", "title": "trafilatura favor_recall 参数化+requests兜底接readability", "scores": true},
-    {"id": "Fuzzy-L0", "title": "brave spellcheck+读corrections/suggestions+稀少时纠错重搜", "scores": true},
-    {"id": "Fuzzy-L1L2", "title": "rapidfuzz编辑距离纠错+result_rank_score模糊加分(可选依赖降级)", "scores": true},
-    {"id": "Fuzzy-L3", "title": "结果空时DeepSeek只纠拼写重搜", "scores": true},
-    {"id": "headA-web_crawl", "title": "递归深抓2-6级: DeepCrawler+crawl4ai/纯PythonBFS双路径+护栏+MCP/HTTP/CLI+bench用例", "scores": true},
-    {"id": "headB-compare_solutions", "title": "通用方案对比: SolutionComparator+矩阵+字段级引用+复用repo_facts+MCP/HTTP+bench用例", "scores": true},
-    {"id": "docs", "title": "README/zh-CN/AGENT_INTEGRATION 工具表+requirements-optional 注明新依赖", "scores": false}
+    {
+      "id": "P0-2",
+      "title": "_multi_search 并发原语+子查询独立缓存, 替换串行扩展循环(含BUG-6)",
+      "scores": false
+    },
+    {
+      "id": "P0-3",
+      "title": "plan_queries 对比意图加权fan-out+expand_mode, web_search暴露",
+      "scores": true
+    },
+    {
+      "id": "BUG-3",
+      "title": "cache_options 补 auto_rewrite/或 bump CACHE_SCHEMA_VERSION",
+      "scores": false
+    },
+    {
+      "id": "P0-4",
+      "title": "_clean_text 加样板过滤层(cookie/登录/版权/纯链接块)",
+      "scores": true
+    },
+    {
+      "id": "P0-5",
+      "title": "trafilatura favor_recall 参数化+requests兜底接readability",
+      "scores": true
+    },
+    {
+      "id": "Fuzzy-L0",
+      "title": "brave spellcheck+读corrections/suggestions+稀少时纠错重搜",
+      "scores": true
+    },
+    {
+      "id": "Fuzzy-L1L2",
+      "title": "rapidfuzz编辑距离纠错+result_rank_score模糊加分(可选依赖降级)",
+      "scores": true
+    },
+    {
+      "id": "Fuzzy-L3",
+      "title": "结果空时DeepSeek只纠拼写重搜",
+      "scores": true
+    },
+    {
+      "id": "headA-web_crawl",
+      "title": "递归深抓2-6级: DeepCrawler+crawl4ai/纯PythonBFS双路径+护栏+MCP/HTTP/CLI+bench用例",
+      "scores": true
+    },
+    {
+      "id": "headB-compare_solutions",
+      "title": "通用方案对比: SolutionComparator+矩阵+字段级引用+复用repo_facts+MCP/HTTP+bench用例",
+      "scores": true
+    },
+    {
+      "id": "docs",
+      "title": "README/zh-CN/AGENT_INTEGRATION 工具表+requirements-optional 注明新依赖",
+      "scores": false
+    }
   ],
   "done": [
-    {"id": "P0-1", "commit": "6142f48", "note": "batch_extract 预算化 + answer 抽取与 num_sources 挂钩 + evalcache 桩兼容"}
+    {
+      "id": "P0-1",
+      "commit": "6142f48",
+      "note": "batch_extract 预算化 + answer 抽取与 num_sources 挂钩 + evalcache 桩兼容"
+    },
+    {
+      "id": "BUG-2",
+      "commit": "76fd110",
+      "note": "safe_get 重定向逐跳复检+DNS校验(默认关,fake-ip误杀)+evalcache _FakeResp 兼容"
+    }
   ]
 }
