@@ -1,7 +1,7 @@
 {
-  "iter": 3,
+  "iter": 4,
   "best_score": 87.36,
-  "best_commit": "76fd110",
+  "best_commit": "ef1ba5d",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -38,14 +38,17 @@
       "item": "BUG-2",
       "commit": "76fd110",
       "note": "SSRF 加固; 基建项无回退; 踩坑: 本机fake-ip把公网解析到198.18/15,DNS校验改默认关"
+    },
+    {
+      "iter": 3,
+      "score": 87.36,
+      "delta": 0,
+      "item": "P0-2",
+      "commit": "ef1ba5d",
+      "note": "并发扩展替代串行; 基建项无回退; 18单测"
     }
   ],
   "todo": [
-    {
-      "id": "P0-2",
-      "title": "_multi_search 并发原语+子查询独立缓存, 替换串行扩展循环(含BUG-6)",
-      "scores": false
-    },
     {
       "id": "P0-3",
       "title": "plan_queries 对比意图加权fan-out+expand_mode, web_search暴露",
@@ -107,6 +110,11 @@
       "id": "BUG-2",
       "commit": "76fd110",
       "note": "safe_get 重定向逐跳复检+DNS校验(默认关,fake-ip误杀)+evalcache _FakeResp 兼容"
+    },
+    {
+      "id": "P0-2",
+      "commit": "ef1ba5d",
+      "note": "_multi_search 并发原语+子查询缓存+BUG-6; 注入假searxng单测"
     }
   ]
 }
