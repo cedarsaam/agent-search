@@ -332,6 +332,33 @@ class FuzzyL0Test(unittest.TestCase):
         self.assertTrue(any("claude.com" in u for u in urls))  # 纠正结果已并入
 
 
+class FuzzyCorrectTest(unittest.TestCase):
+    def setUp(self):
+        try:
+            import rapidfuzz  # noqa: F401
+        except ImportError:
+            self.skipTest("rapidfuzz 未安装(可选依赖)")
+
+    def test_corrects_typo_against_vocab(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        vocab = set(COMMON_TECH_TERMS)
+        self.assertEqual(fuzzy_correct_query("skil", vocab), ["skill"])
+        # 保留 CJK 与语序: 只换拼错的 ASCII token
+        self.assertEqual(fuzzy_correct_query("kuberntes 部署", vocab), ["kubernetes 部署"])
+
+    def test_correct_word_not_changed(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        self.assertEqual(fuzzy_correct_query("python tutorial", set(COMMON_TECH_TERMS)), [])
+
+    def test_no_overcorrect_unrelated(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        self.assertEqual(fuzzy_correct_query("zzqx", set(COMMON_TECH_TERMS)), [])
+
+    def test_cjk_only_query_no_correction(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        self.assertEqual(fuzzy_correct_query("数据库 选型", set(COMMON_TECH_TERMS)), [])
+
+
 class PlanQueriesTest(unittest.TestCase):
     def test_compare_intent_fans_out(self):
         from search import plan_queries

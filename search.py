@@ -361,6 +361,72 @@ PLAN_MAX_SUBQ = int(os.environ.get("PLAN_MAX_SUBQ", "5"))
 # 容错搜索: 结果数低于此阈值才触发"纠错重搜"(短路, 正常查询零额外开销)
 FUZZY_MIN_RESULTS = int(os.environ.get("FUZZY_MIN_RESULTS", "3"))
 
+# 容错纠错(L1) 内置高频技术词表(硬兜底, 可继续补)。rapidfuzz 为可选依赖, 缺失则整层静默降级。
+COMMON_TECH_TERMS = {
+    "skill", "skills", "python", "javascript", "typescript", "kubernetes", "docker",
+    "anthropic", "claude", "openai", "deepseek", "pydantic", "fastapi", "flask", "django",
+    "asyncio", "async", "await", "coroutine", "numpy", "pandas", "pytorch", "tensorflow",
+    "postgres", "postgresql", "mysql", "sqlite", "redis", "memcached", "mongodb", "kafka",
+    "nginx", "react", "vue", "svelte", "nextjs", "node", "express", "rust", "golang",
+    "rapidfuzz", "searxng", "trafilatura", "crawl4ai", "selenium", "playwright", "tutorial",
+    "documentation", "pricing", "comparison", "benchmark", "alternatives", "kubernetes",
+}
+
+
+def _ascii_tokens(query: str) -> list[str]:
+    """仅取 ASCII token 用于编辑距离纠错; CJK 不参与(靠字形而非编辑距离, 交给 L0/L3)。"""
+    return [t for t in query_terms(query) if re.fullmatch(r"[a-z0-9_.-]+", t)]
+
+
+def build_correction_vocab(cache, results) -> set:
+    """纠错词典 = 内置词表 ∪ 本轮结果 title token ∪ 历史查询 token(尽力而为, 失败忽略)。"""
+    vocab = set(COMMON_TECH_TERMS)
+    for r in results or []:
+        for t in re.findall(r"[a-z0-9_.-]{3,}", (getattr(r, "title", "") or "").lower()):
+            vocab.add(t)
+    try:
+        with sqlite3.connect(cache.db_path) as conn:
+            for (key,) in conn.execute("SELECT cache_key FROM search_cache LIMIT 500"):
+                q = json.loads(key).get("query", "")
+                for t in re.findall(r"[a-z0-9_.-]{3,}", q.lower()):
+                    vocab.add(t)
+    except Exception:
+        pass
+    return vocab
+
+
+def fuzzy_correct_query(query: str, vocab: set, max_fix: int = 2) -> list[str]:
+    """对 query 的 ASCII token 做编辑距离纠错, 生成至多 1 个纠正变体(保留 CJK/语序)。
+
+    误纠防护: token 已在词典→跳过(正确词不纠); 相似度 >=88 且编辑距离 <= 长度自适应阈值
+    (len<=4→1, <=8→2, 否则 3) 才替换; 一次最多纠 max_fix 个。rapidfuzz 未装→[] 静默降级。
+    """
+    try:
+        from rapidfuzz import process, fuzz, distance
+    except ImportError:
+        return []
+    if not vocab:
+        return []
+    vocab_lower = {v.lower() for v in vocab}
+    fixes, fixed = {}, 0
+    for tok in dict.fromkeys(_ascii_tokens(query)):
+        if fixed >= max_fix or tok in vocab_lower:
+            continue
+        max_dist = 1 if len(tok) <= 4 else (2 if len(tok) <= 8 else 3)
+        cand = process.extractOne(tok, vocab_lower, scorer=fuzz.ratio, score_cutoff=88)
+        if not cand:
+            continue
+        best = cand[0]
+        if best != tok and distance.Levenshtein.distance(tok, best) <= max_dist:
+            fixes[tok] = best
+            fixed += 1
+    if not fixes:
+        return []
+    variant = query
+    for tok, best in fixes.items():           # 就地替换 typo token, 不破坏 CJK/语序/其余词
+        variant = re.sub(rf"\b{re.escape(tok)}\b", best, variant, flags=re.I)
+    return [variant] if variant.lower() != query.strip().lower() else []
+
 
 def plan_queries(query: str, mode: str = "auto") -> list[tuple]:
     """把查询规划成 (子查询, 权重, 标签) 列表(不含原查询)。
@@ -443,6 +509,21 @@ def result_rank_score(query: str, result: "SearchResult", index: int) -> float:
 
     if re.search(r"20\d{2}[-年/]\d{1,2}|latest|release|changelog|更新|发布", text):
         score += 0.6
+
+    # 容错 L2: query 中"未精确出现在标题"的 ASCII 词, 用模糊匹配补分(近形命中也能浮上来)。
+    # rapidfuzz 可选, 缺失则跳过(排序退化为现有行为)。
+    try:
+        from rapidfuzz import fuzz
+        title_l = (result.title or "").lower()
+        fuzzy_bonus = 0.0
+        for t in terms:
+            if len(t) < 4 or not re.fullmatch(r"[a-z0-9_.-]+", t) or t in title_l:
+                continue
+            if fuzz.partial_ratio(t, title_l) >= 88:
+                fuzzy_bonus += 1.0
+        score += min(fuzzy_bonus, 3.0)
+    except ImportError:
+        pass
     return score
 
 
@@ -1803,6 +1884,23 @@ class AgentSearch:
                     resp.results = merged
                     resp.total = len(merged)
                     sys.stderr.write(f"[*] 容错: 结果稀少, 用纠正词重搜 '{corr}'\n")
+
+            # 容错 L1: L0 后仍稀少 → 本地编辑距离纠错(rapidfuzz, 缺失则空), 纠正变体重搜并入
+            if (auto_rewrite and not resp.error and len(resp.results) < FUZZY_MIN_RESULTS):
+                variants = fuzzy_correct_query(query, build_correction_vocab(self.cache, resp.results))
+                if variants:
+                    extra, _e, _n = self._multi_search(
+                        variants, engines, time_range=time_range, categories=categories,
+                        language=language, safe_search=safe_search)
+                    merged, seen = [], set()
+                    for r in list(resp.results) + extra:
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                    resp.results = merged
+                    resp.total = len(merged)
+                    sys.stderr.write(f"[*] 容错: 本地纠错重搜 {variants}\n")
         else:
             resp = self.web_fallback.search(query, top_k)
 
