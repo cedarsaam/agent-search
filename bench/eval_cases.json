@@ -1142,5 +1142,47 @@
     "requires_flaresolverr": false,
     "requires_deep": false,
     "notes": "容错: 拼错 pyton 仍应命中 Python 官方 asyncio 文档"
+  },
+  {
+    "id": "crawl_python_docs",
+    "type": "crawl",
+    "url": "https://docs.python.org/3/",
+    "max_depth": 1,
+    "max_pages": 6,
+    "scope": "same-domain",
+    "must_include_terms": [
+      "Python"
+    ],
+    "expected_domains": [
+      "docs.python.org"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": true,
+    "notes": "递归深抓: docs.python.org 抓>=2页(含depth1子页)且有正文、同域"
+  },
+  {
+    "id": "crawl_fastapi_docs",
+    "type": "crawl",
+    "url": "https://fastapi.tiangolo.com/",
+    "max_depth": 1,
+    "max_pages": 6,
+    "scope": "same-domain",
+    "must_include_terms": [
+      "FastAPI"
+    ],
+    "expected_domains": [
+      "fastapi.tiangolo.com"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": true,
+    "notes": "递归深抓: FastAPI 文档站抓>=2页且有正文、同域(验证深抓另一站点)"
   }
 ]

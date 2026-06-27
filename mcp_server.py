@@ -113,6 +113,33 @@ def web_map(url: str, max_links: int = 50, same_domain: bool = True) -> dict:
 
 
 @mcp.tool()
+def web_crawl(url: str, max_depth: int = 2, max_pages: int = 30, scope: str = "same-domain",
+              include: list = [], exclude: list = [], relevance: str = "",
+              return_markdown: bool = True) -> dict:
+    """递归深抓：从一个 URL 出发沿链接抓到 2~6 级正文(web_map 只发现单层链接, 这个会抓正文)。
+
+    需要把一个文档站/方案站"顺着链接抓深"——抓到二三四五六级子页正文——时用本工具。
+    建议先用 web_map 看站点结构, 再用 web_crawl 深抓需要的子树。装了 crawl4ai 走其深抓策略,
+    没装则纯 Python BFS 兜底(都带 SSRF 防护与预算护栏, 不会无限抓)。
+
+    Args:
+        url: 起始 URL
+        max_depth: 抓取深度(起始页之外的层数, 1=再抓一层子页, 上限 6)。要"2~6 级"就传 2~6。
+        max_pages: 总页数上限(默认 30, 硬上限 120)
+        scope: 范围 same-domain(默认, 只抓同域) / path-prefix(同域且同路径前缀) / any(可跟外链)
+        include: 只抓 URL 命中这些正则的页(可空)
+        exclude: 跳过 URL 命中这些正则的页(可空)
+        relevance: 给了关键词则按 URL 相关性 best-first 优先抓(抓"最相关的子页")
+        return_markdown: 是否返回每页正文 markdown(默认 True; 只想要链接树可设 False)
+    """
+    return engine().crawl(
+        url, max_depth=max_depth, max_pages=max_pages, scope=scope,
+        include=list(include) or None, exclude=list(exclude) or None,
+        relevance=relevance, return_markdown=return_markdown,
+    )
+
+
+@mcp.tool()
 def github_search(query: str, kind: str = "repos", limit: int = 5) -> dict:
     """在 GitHub 上搜索仓库/代码/issue/PR(走本机已登录的 gh CLI，比网页搜索精准)。
 

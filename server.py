@@ -79,6 +79,18 @@ class MapReq(BaseModel):
     same_domain: bool = True
 
 
+class CrawlReq(BaseModel):
+    url: str
+    max_depth: int = 2                  # 起始页之外的层数(2~6 级), 硬上限 6
+    max_pages: int = 30                 # 总页数上限, 硬上限 120
+    scope: str = "same-domain"          # same-domain / path-prefix / any
+    include: Optional[list[str]] = None
+    exclude: Optional[list[str]] = None
+    concurrency: int = 4
+    relevance: str = ""                 # 给了则按 URL 相关性 best-first
+    return_markdown: bool = True
+
+
 class GitHubReq(BaseModel):
     query: str
     kind: str = "repos"          # repos / code / issues / prs
@@ -143,6 +155,16 @@ def extract(req: ExtractReq):
 @app.post("/map")
 def map_site(req: MapReq):
     return get_engine().map_site(req.url, max_links=req.max_links, same_domain=req.same_domain)
+
+
+@app.post("/crawl")
+def crawl(req: CrawlReq):
+    """递归深抓 2~6 级正文(web_map 的递归版 + 抓正文)。"""
+    return get_engine().crawl(
+        req.url, max_depth=req.max_depth, max_pages=req.max_pages, scope=req.scope,
+        include=req.include, exclude=req.exclude, concurrency=req.concurrency,
+        relevance=req.relevance, return_markdown=req.return_markdown,
+    )
 
 
 @app.post("/github")

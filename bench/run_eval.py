@@ -369,12 +369,66 @@ def eval_github(engine, case, budget):
     }
 
 
+def eval_crawl(engine, case, budget):
+    """递归深抓: 验证抓到 >=2 页、有正文、同域、达到 depth>=1, 以及 must 词命中。"""
+    if getattr(budget, "offline", False):
+        return None  # 深抓无缓存层, 离线不跑
+    url = case["url"]
+    res = engine.crawl(url, max_depth=case.get("max_depth", 1),
+                       max_pages=case.get("max_pages", 6),
+                       scope=case.get("scope", "same-domain"))
+    if res.get("error"):
+        return {"score": 0.0, "observed_domains": [domain_of(url)], "matched_terms": [],
+                "source_urls": [], "detail": {"error": res["error"]}, "extra": {}}
+    pages = res.get("pages", []) or []
+    base = domain_of(url)
+    pts = max_pts = 0.0
+    detail = {}
+
+    max_pts += 2; pts += 2 if len(pages) >= 2 else (1 if pages else 0)
+    detail["page_count"] = len(pages)
+
+    max_pts += 2
+    with_md = sum(1 for p in pages if (p.get("markdown") or "").strip())
+    pts += 2 * (with_md / len(pages)) if pages else 0
+    detail["pages_with_markdown"] = with_md
+
+    if pages:
+        same = sum(1 for p in pages if host_matches(domain_of(p["url"]), base))
+        ratio = same / len(pages)
+        max_pts += 1; pts += 1 * ratio
+        detail["same_domain_ratio"] = round(ratio, 2)
+
+    max_pts += 1
+    reached = any(p.get("depth", 0) >= 1 for p in pages)
+    pts += 1 if reached else 0
+    detail["reached_depth1"] = reached
+
+    must = case.get("must_include_terms") or []
+    blob = " ".join((p.get("markdown") or "")[:5000] for p in pages)
+    frac, matched = fraction_terms(must, blob)
+    if must:
+        max_pts += 2; pts += 2 * frac
+        detail["must_terms_frac"] = round(frac, 2)
+
+    score = pts / max_pts if max_pts else 0.0
+    return {
+        "score": round(score, 4),
+        "observed_domains": sorted(set(domain_of(p["url"]) for p in pages))[:8],
+        "matched_terms": matched,
+        "source_urls": [p["url"] for p in pages[:5]],
+        "detail": detail,
+        "extra": {},
+    }
+
+
 EVALUATORS = {
     "search": eval_search,
     "ask": eval_ask,
     "extract": eval_extract,
     "map": eval_map,
     "github": eval_github,
+    "crawl": eval_crawl,
 }
 
 

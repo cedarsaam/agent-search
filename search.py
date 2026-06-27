@@ -1368,6 +1368,198 @@ class SiteMapper:
 
 
 # ================================================================
+# 递归深抓 (web_crawl) — 沿链接 BFS/best-first 抓多级正文
+# ================================================================
+
+# 深抓护栏(硬上限, 不信任入参)
+CRAWL_MAX_DEPTH_CAP = 6
+CRAWL_MAX_PAGES_CAP = 120
+CRAWL_PER_LEVEL_CAP = int(os.environ.get("CRAWL_PER_LEVEL_CAP", "40"))
+CRAWL_TIME_BUDGET_S = int(os.environ.get("CRAWL_TIME_BUDGET_S", "45"))
+CRAWL_MAX_BYTES = int(os.environ.get("CRAWL_MAX_BYTES", str(8 * 1024 * 1024)))
+
+
+class DeepCrawler:
+    """递归深抓: 从一个 URL 出发, 沿链接 BFS/best-first 抓到 N 级正文。
+
+    与 web_map 的边界: web_map 只发现单层链接(快, 探路, 不抓正文); web_crawl 沿链接
+    多层抓正文(慢, 深入)。典型用法: 先 web_map 看站点结构, 再 web_crawl 深抓需要的子树。
+
+    双路径: 装了 crawl4ai 用其 BFSDeepCrawlStrategy(JS 渲染更强); 未装则纯 Python BFS 兜底
+    (复用 SiteMapper 链接发现 + ContentExtractor 抽正文 + url_is_safe SSRF 防护), 不依赖 crawl4ai。
+    护栏: 深度/页数硬上限 + 每级上限 + 时间预算看门狗 + 累计字节闸门; 每个入队 URL 必过
+    url_is_safe(递归会顺外链穿内网, 必须逐一校验)。
+    """
+
+    def __init__(self, extractor, mapper):
+        self.extractor = extractor
+        self.mapper = mapper
+
+    def _in_scope(self, link, base, scope, include_res, exclude_res):
+        try:
+            p = urlparse(link)
+        except Exception:
+            return False
+        if p.scheme not in ("http", "https") or not url_is_safe(link):
+            return False  # SSRF: 每个入队 URL 都要过校验
+        host = p.netloc.lower().removeprefix("www.")
+        base_host = base.netloc.lower().removeprefix("www.")
+        if scope == "same-domain" and host != base_host:
+            return False
+        if scope == "path-prefix" and (host != base_host or not p.path.startswith(base.path or "/")):
+            return False
+        if exclude_res and any(r.search(link) for r in exclude_res):
+            return False
+        if include_res and not any(r.search(link) for r in include_res):
+            return False
+        return True
+
+    def crawl(self, url, max_depth=2, max_pages=30, scope="same-domain",
+              include=None, exclude=None, concurrency=4, relevance="",
+              return_markdown=True, time_budget_s=None) -> dict:
+        url = clean_url(url)
+        base = urlparse(url)
+        out = {"url": url, "max_depth": None, "scope": scope, "pages": [], "total": 0,
+               "truncated": False, "truncated_reason": None, "error": None}
+        if not base.scheme or not base.netloc:
+            out["error"] = "URL 无效"
+            return out
+        if not url_is_safe(url):
+            out["error"] = "URL 指向私网/环回地址, 已按 SSRF 防护拒绝(设 AGENT_SEARCH_ALLOW_PRIVATE=1 可放开)"
+            return out
+
+        max_depth = max(0, min(int(max_depth), CRAWL_MAX_DEPTH_CAP))
+        max_pages = max(1, min(int(max_pages), CRAWL_MAX_PAGES_CAP))
+        out["max_depth"] = max_depth
+        deadline = time.time() + (time_budget_s or CRAWL_TIME_BUDGET_S)
+        include_res = [re.compile(p, re.I) for p in (include or []) if p]
+        exclude_res = [re.compile(p, re.I) for p in (exclude or []) if p]
+        terms = query_terms(relevance) if relevance else []
+
+        # 优先 crawl4ai(若已装且未失败); 任何异常/未装 → 回退纯 Python BFS
+        try:
+            import crawl4ai  # noqa: F401
+            res = self._crawl4ai(url, base, max_depth, max_pages, scope, include_res,
+                                 exclude_res, terms, return_markdown, deadline, out)
+            if res is not None:
+                return res
+        except ImportError:
+            pass
+        except Exception:
+            pass
+        return self._bfs(url, base, max_depth, max_pages, scope, include_res, exclude_res,
+                         concurrency, terms, return_markdown, deadline, out)
+
+    def _score(self, link, terms):
+        if not terms:
+            return 0.0
+        low = (link or "").lower()
+        return float(sum(low.count(t) for t in terms))
+
+    def _bfs(self, seed, base, max_depth, max_pages, scope, include_res, exclude_res,
+             concurrency, terms, return_markdown, deadline, out):
+        from concurrent.futures import ThreadPoolExecutor
+
+        visited = {canonical_url(seed)}
+        frontier = [(seed, 0)]
+        pages, total_bytes = [], 0
+        truncated, reason = False, None
+        workers = min(max(1, int(concurrency)), 8)
+
+        while frontier and len(pages) < max_pages:
+            if time.time() > deadline:
+                truncated, reason = True, "time_budget"
+                break
+            if terms:                                  # best-first: URL 相关性优先
+                frontier.sort(key=lambda x: -self._score(x[0], terms))
+            batch, frontier = frontier[:workers], frontier[workers:]
+            with ThreadPoolExecutor(max_workers=min(workers, len(batch))) as ex:
+                fetched = list(ex.map(lambda ud: (ud, self.extractor.extract(ud[0])), batch))
+
+            for (u, depth), ext in fetched:
+                if len(pages) >= max_pages:
+                    truncated, reason = True, "max_pages"
+                    break
+                md = ext.get("markdown", "") if return_markdown else ""
+                pages.append({"url": ext.get("url", u), "depth": depth,
+                              "title": ext.get("title", ""), "method": ext.get("method_used", ""),
+                              "score": round(self._score(u, terms), 2),
+                              "markdown": md})
+                if return_markdown and md:
+                    total_bytes += len(md.encode("utf-8", "ignore"))
+                    if total_bytes > CRAWL_MAX_BYTES:
+                        truncated, reason = True, "byte_budget"
+                        break
+                if depth < max_depth:                  # 发现下层链接
+                    try:
+                        links = self.mapper._page_links(u, base, max_links=CRAWL_PER_LEVEL_CAP,
+                                                        same_domain=(scope != "any"))
+                    except Exception:
+                        links = []
+                    for item in links:
+                        link = item.get("url", "")
+                        key = canonical_url(link)
+                        if key in visited or not self._in_scope(link, base, scope, include_res, exclude_res):
+                            continue
+                        visited.add(key)
+                        frontier.append((link, depth + 1))
+            if reason:
+                break
+
+        if not reason and frontier and len(pages) >= max_pages:
+            truncated, reason = True, "max_pages"
+        out.update({"pages": pages, "total": len(pages),
+                    "truncated": truncated, "truncated_reason": reason})
+        return out
+
+    def _crawl4ai(self, seed, base, max_depth, max_pages, scope, include_res, exclude_res,
+                  terms, return_markdown, deadline, out):
+        """crawl4ai 深抓路径(若已装)。任何异常返回 None 让上层回退纯 Python BFS。"""
+        import asyncio
+        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+        from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+
+        strategy = BFSDeepCrawlStrategy(max_depth=max_depth, max_pages=max_pages,
+                                        include_external=(scope == "any"))
+        cfg = CrawlerRunConfig(deep_crawl_strategy=strategy, stream=False)
+
+        async def _run():
+            pages = []
+            async with AsyncWebCrawler() as crawler:
+                results = await crawler.arun(url=seed, config=cfg)  # 深抓模式返回 list
+                for r in (results or []):
+                    try:
+                        link = getattr(r, "url", "") or ""
+                        if link != seed and not self._in_scope(link, base, scope, include_res, exclude_res):
+                            continue
+                        md_obj = getattr(r, "markdown", None)
+                        md = (getattr(md_obj, "fit_markdown", None) or getattr(md_obj, "raw_markdown", None)
+                              or (md_obj if isinstance(md_obj, str) else "") or "") if return_markdown else ""
+                        meta = getattr(r, "metadata", None) or {}
+                        pages.append({"url": link, "depth": (meta.get("depth", 0) if isinstance(meta, dict) else 0),
+                                      "title": (meta.get("title", "") if isinstance(meta, dict) else ""),
+                                      "method": "crawl4ai", "score": round(self._score(link, terms), 2),
+                                      "markdown": md})
+                    except Exception:
+                        continue  # 单页失败(含 #1437 max_pages 触顶) 跳过
+            return pages
+
+        try:
+            pages = asyncio.run(_run())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                pages = loop.run_until_complete(_run())
+            finally:
+                loop.close()
+        pages = pages[:max_pages]
+        out.update({"pages": pages, "total": len(pages),
+                    "truncated": len(pages) >= max_pages, "truncated_reason":
+                    "max_pages" if len(pages) >= max_pages else None})
+        return out
+
+
+# ================================================================
 # GitHub 搜索 (复用本机 gh CLI)
 # ================================================================
 
@@ -1679,6 +1871,7 @@ class AgentSearch:
         self.flaresolverr = FlareSolverrEngine()
         self.extractor = ContentExtractor(self.cache)
         self.mapper = SiteMapper()
+        self.deep_crawler = DeepCrawler(self.extractor, self.mapper)
         self.llm = DeepSeekClient()
         self.github = GitHubEngine()
         self._prefer_searxng = False
@@ -1987,6 +2180,18 @@ class AgentSearch:
         """发现站点链接，用于先 map 再 extract/crawl。"""
         return self.mapper.map(url, max_links=max_links, same_domain=same_domain)
 
+    def crawl(self, url: str, max_depth=2, max_pages=30, scope="same-domain",
+              include=None, exclude=None, concurrency=4, relevance="",
+              return_markdown=True) -> dict:
+        """递归深抓: 从 url 出发沿链接 BFS/best-first 抓到 max_depth 级正文(2-6 级)。
+
+        先 web_map 探路(快, 单层, 只链接)再 web_crawl 深抓(慢, 多层, 抓正文)。
+        """
+        return self.deep_crawler.crawl(
+            url, max_depth=max_depth, max_pages=max_pages, scope=scope,
+            include=include, exclude=exclude, concurrency=concurrency,
+            relevance=relevance, return_markdown=return_markdown)
+
     def github_search(self, query: str, kind="repos", limit=5) -> dict:
         """搜索 GitHub（仓库/代码/issue/PR），走本机 gh CLI"""
         return self.github.search(query, kind=kind, limit=limit)
@@ -2108,6 +2313,9 @@ def main():
     parser.add_argument("--flaresolverr", "-f", action="store_true", help="用 FlareSolverr 绕过 CAPTCHA 搜 Google/Bing/DDG")
     parser.add_argument("--url", "-u", help="直接提取指定 URL 内容")
     parser.add_argument("--map", dest="map_url", help="发现指定站点的内部链接")
+    parser.add_argument("--crawl", dest="crawl_url", help="从该 URL 递归深抓 2~6 级正文")
+    parser.add_argument("--max-depth", type=int, default=2, help="--crawl 深度(起始页外层数, 1~6)")
+    parser.add_argument("--max-pages", type=int, default=20, help="--crawl 总页数上限")
     parser.add_argument("--time-range", choices=["day", "month", "year"], help="SearXNG 时间范围过滤")
     parser.add_argument("--categories", help="SearXNG 分类，逗号分隔: general,news,images")
     parser.add_argument("--language", help="SearXNG 语言代码，如 zh-CN / en-US")
@@ -2148,6 +2356,21 @@ def main():
             for i, link in enumerate(result.get("links", []), 1):
                 print(f"  [{i:2d}] {link.get('title') or '(无标题)'}")
                 print(f"       {link['url']}")
+        return
+
+    if args.crawl_url:
+        result = search.crawl(args.crawl_url, max_depth=args.max_depth, max_pages=args.max_pages,
+                              relevance=args.query or "")
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"\n深抓: {result['url']} (depth≤{result.get('max_depth')})")
+            print(f"页数: {result['total']}{' (截断: ' + str(result.get('truncated_reason')) + ')' if result.get('truncated') else ''}")
+            if result.get("error"):
+                print(f"提示: {result['error']}")
+            for i, p in enumerate(result.get("pages", []), 1):
+                print(f"  [{i:2d}] d{p['depth']} {p.get('title') or '(无标题)'}")
+                print(f"       {p['url']}  [{p.get('method')}, {len(p.get('markdown',''))} 字]")
         return
 
     if args.url:

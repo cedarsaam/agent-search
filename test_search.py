@@ -287,6 +287,63 @@ class MultiSearchTest(unittest.TestCase):
         self.assertEqual(nfail, 1)    # qerr 失败被计数, 不静默吞
 
 
+class DeepCrawlerTest(unittest.TestCase):
+    def _ext(self):
+        class Ext:
+            def extract(self, url, method="auto"):
+                return {"url": url, "markdown": "body " + url, "title": "T", "method_used": "fake"}
+        return Ext()
+
+    def test_bfs_levels_dedup_and_scope(self):
+        from search import DeepCrawler
+        graph = {
+            "https://x.com/": [{"url": "https://x.com/a"}, {"url": "https://x.com/b"},
+                               {"url": "https://evil.com/z"}],
+            "https://x.com/a": [{"url": "https://x.com/c"}, {"url": "https://x.com/a"}],  # 含自链
+        }
+
+        class Map:
+            def _page_links(self, url, base, max_links=50, same_domain=True):
+                return graph.get(url, [])
+
+        r = DeepCrawler(self._ext(), Map()).crawl("https://x.com/", max_depth=2, max_pages=20)
+        urls = [p["url"] for p in r["pages"]]
+        self.assertIn("https://x.com/c", urls)            # depth2 子页抓到
+        self.assertNotIn("https://evil.com/z", urls)      # 跨域被 same-domain 拦
+        self.assertEqual(len(urls), len(set(urls)))       # canonical 去重
+        depths = {p["url"]: p["depth"] for p in r["pages"]}
+        self.assertEqual(depths["https://x.com/"], 0)
+        self.assertEqual(depths["https://x.com/c"], 2)
+
+    def test_max_pages_truncates(self):
+        from search import DeepCrawler
+
+        class Map:
+            def _page_links(self, url, base, max_links=50, same_domain=True):
+                return [{"url": f"https://x.com/p{len(url)}_{i}"} for i in range(5)]
+
+        r = DeepCrawler(self._ext(), Map()).crawl("https://x.com/", max_depth=6, max_pages=10)
+        self.assertEqual(r["total"], 10)
+        self.assertTrue(r["truncated"])
+        self.assertEqual(r["truncated_reason"], "max_pages")
+
+    def test_ssrf_blocks_internal_seed(self):
+        from search import DeepCrawler
+        r = DeepCrawler(None, None).crawl("http://127.0.0.1/secret", max_depth=1)
+        self.assertTrue(r["error"])
+        self.assertEqual(r["pages"], [])
+
+    def test_depth_cap_enforced(self):
+        from search import DeepCrawler
+
+        class Map:
+            def _page_links(self, url, base, max_links=50, same_domain=True):
+                return []
+
+        r = DeepCrawler(self._ext(), Map()).crawl("https://x.com/", max_depth=999, max_pages=5)
+        self.assertLessEqual(r["max_depth"], 6)           # 硬上限 CRAWL_MAX_DEPTH_CAP
+
+
 class FuzzyL0Test(unittest.TestCase):
     def test_sparse_plus_corrections_triggers_research(self):
         from search import SearchResponse
