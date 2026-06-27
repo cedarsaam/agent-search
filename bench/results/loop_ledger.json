@@ -1,7 +1,7 @@
 {
-  "iter": 9,
+  "iter": 10,
   "best_score": 88.21,
-  "best_commit": "be1b251",
+  "best_commit": "fac7aa9",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -14,7 +14,8 @@
     "worktree 无 .env(gitignore), 评测前 source 父仓 .env 拿 DeepSeek key",
     "bench/cache 已填充, 后续评测网络走缓存(排序/清洗/打分新鲜重跑)",
     "iter4 起 suite=53例, best_score 口径同步为53例(加了3条对比用例)",
-    "iter8: suite=55例; settings.yml brave spellcheck已commit但运行容器挂父仓settings,live corrections需用户同步父仓+restart;best_score=88.21口径含55例"
+    "iter8: suite=55例; settings.yml brave spellcheck已commit但运行容器挂父仓settings,live corrections需用户同步父仓+restart;best_score=88.21口径含55例",
+    "iter9: venv 装了 rapidfuzz 3.14.5 让 L1/L2 生效;requirements-optional 待 docs 轮补"
   ],
   "history": [
     {
@@ -88,14 +89,17 @@
       "item": "Fuzzy-L0",
       "commit": "be1b251",
       "note": "容错L0; suite53→55(+2拼错用例); 涨分"
+    },
+    {
+      "iter": 9,
+      "score": 88.21,
+      "delta": 0,
+      "item": "Fuzzy-L1L2",
+      "commit": "fac7aa9",
+      "note": "L1L2容错;装rapidfuzz;L2加分未回退"
     }
   ],
   "todo": [
-    {
-      "id": "Fuzzy-L1L2",
-      "title": "rapidfuzz编辑距离纠错+result_rank_score模糊加分(可选依赖降级)",
-      "scores": true
-    },
     {
       "id": "Fuzzy-L3",
       "title": "结果空时DeepSeek只纠拼写重搜",
@@ -157,6 +161,11 @@
       "id": "Fuzzy-L0",
       "commit": "be1b251",
       "note": "读corrections+稀少时纠错重搜+brave spellcheck(settings已commit,需用户restart容器激活live); 55例88.21(+0.44)"
+    },
+    {
+      "id": "Fuzzy-L1L2",
+      "commit": "fac7aa9",
+      "note": "rapidfuzz编辑距离纠错+L2模糊加分(装了rapidfuzz3.14.5);保CJK/语序;无回退;30单测"
     }
   ]
 }
