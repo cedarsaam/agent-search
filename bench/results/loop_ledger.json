@@ -1,7 +1,7 @@
 {
-  "iter": 13,
+  "iter": 14,
   "best_score": 88.92,
-  "best_commit": "11fac10",
+  "best_commit": "0620ba6",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -123,15 +123,17 @@
       "item": "headB-compare_solutions",
       "commit": "11fac10",
       "note": "头牌B通用对比; suite57→59; compare类97; 涨分; 两头牌全交付"
-    }
-  ],
-  "todo": [
+    },
     {
-      "id": "docs",
-      "title": "README/zh-CN/AGENT_INTEGRATION 工具表+requirements-optional 注明新依赖",
-      "scores": false
+      "iter": 13,
+      "score": 88.92,
+      "delta": 0,
+      "item": "docs",
+      "commit": "0620ba6",
+      "note": "文档收尾; todo清空; 退出条件A"
     }
   ],
+  "todo": [],
   "done": [
     {
       "id": "P0-1",
@@ -192,6 +194,12 @@
       "id": "headB-compare_solutions",
       "commit": "11fac10",
       "note": "通用对比矩阵 SolutionComparator+复用repo_facts+规则/LLM抽字段+字段级引用+MCP/HTTP+2bench+eval_compare+2单测; 59例88.92(+0.30)"
+    },
+    {
+      "id": "docs",
+      "commit": "0620ba6",
+      "note": "README/zh-CN/AGENT_INTEGRATION/requirements-optional 全更新; 工具6→8"
     }
-  ]
+  ],
+  "status": "COMPLETED"
 }
