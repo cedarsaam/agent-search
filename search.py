@@ -1044,22 +1044,22 @@ class ContentExtractor:
                 downloaded = resp.text
                 if not downloaded:
                     return {"url": url, "markdown": "", "method_used": "trafilatura", "error": "empty download"}
-                try:
-                    md = trafilatura.extract(
-                        downloaded,
-                        output_format="markdown",
-                        include_comments=False,
-                        include_tables=True,
-                        include_links=True,
-                        favor_precision=True,
-                    )
-                except TypeError:
-                    md = trafilatura.extract(
-                        downloaded,
-                        include_comments=False,
-                        include_tables=True,
-                        favor_precision=True,
-                    )
+
+                def _extract(favor):
+                    # 老版 trafilatura 无 output_format/include_links 时 TypeError, 退到精简签名
+                    kw = {favor: True}
+                    try:
+                        return trafilatura.extract(
+                            downloaded, output_format="markdown", include_comments=False,
+                            include_tables=True, include_links=True, **kw)
+                    except TypeError:
+                        return trafilatura.extract(
+                            downloaded, include_comments=False, include_tables=True, **kw)
+
+                # 普通抽取召回优先(对比/选型场景少丢正文); 召回结果空/质量差时再降到精确优先
+                md = _extract("favor_recall")
+                if not md or not text_quality_ok(md):
+                    md = _extract("favor_precision") or md
                 if not md:
                     return {"url": url, "markdown": "", "method_used": "trafilatura", "error": "empty extraction"}
                 return {"url": url, "markdown": md, "title": "", "method_used": "trafilatura", "error": None}
@@ -1113,22 +1113,33 @@ class ContentExtractor:
                 if not r.encoding or r.encoding.lower() in {"iso-8859-1", "latin-1"}:
                     r.encoding = r.apparent_encoding or "utf-8"
                 html = r.text
+                title, text = "", ""
+                # 主体识别优先 readability-lxml(按文本密度选正文, 更准); 未装/失败/质量差回退 bs4 启发式
                 try:
+                    from readability import Document
                     from bs4 import BeautifulSoup
-                    soup = BeautifulSoup(html, "lxml")
-                    for tag in soup([
-                        "script", "style", "noscript", "template", "svg", "canvas",
-                        "header", "footer", "nav", "aside", "form",
-                    ]):
-                        tag.decompose()
-                    title = soup.title.get_text(" ", strip=True) if soup.title else ""
-                    main = soup.find("main") or soup.find("article") or soup.body or soup
-                    text = main.get_text("\n", strip=True)
+                    doc = Document(html)
+                    title = (doc.short_title() or "").strip()
+                    text = BeautifulSoup(doc.summary(html_partial=True), "lxml").get_text("\n", strip=True)
                 except Exception:
-                    title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.I | re.S)
-                    title = title_match.group(1).strip() if title_match else ""
-                    text = re.sub(r'<(script|style|noscript|template)[^>]*>.*?</\1>', ' ', html, flags=re.I | re.S)
-                    text = re.sub(r'<[^>]+>', '\n', text)
+                    text = ""
+                if not text_quality_ok(text):
+                    try:
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(html, "lxml")
+                        for tag in soup([
+                            "script", "style", "noscript", "template", "svg", "canvas",
+                            "header", "footer", "nav", "aside", "form",
+                        ]):
+                            tag.decompose()
+                        title = title or (soup.title.get_text(" ", strip=True) if soup.title else "")
+                        main = soup.find("main") or soup.find("article") or soup.body or soup
+                        text = main.get_text("\n", strip=True)
+                    except Exception:
+                        title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.I | re.S)
+                        title = title or (title_match.group(1).strip() if title_match else "")
+                        text = re.sub(r'<(script|style|noscript|template)[^>]*>.*?</\1>', ' ', html, flags=re.I | re.S)
+                        text = re.sub(r'<[^>]+>', '\n', text)
                 # 仅压缩行内空白, 保留换行结构, 以便后续按行清洗 / 保留段落
                 text = re.sub(r'[ \t]+', ' ', text)
                 text = re.sub(r'\n[ \t]+', '\n', text)
