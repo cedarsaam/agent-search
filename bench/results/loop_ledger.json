@@ -1,7 +1,7 @@
 {
-  "iter": 1,
+  "iter": 2,
   "best_score": 87.36,
-  "best_commit": "4828daf99e2d82cc17e70cbf3bd68c294d74b115",
+  "best_commit": "6142f48",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -15,10 +15,10 @@
     "bench/cache 已填充, 后续评测网络走缓存(排序/清洗/打分新鲜重跑)"
   ],
   "history": [
-    {"iter": 0, "score": 87.36, "delta": 0, "item": "baseline", "commit": "4828daf", "note": "online full suite"}
+    {"iter": 0, "score": 87.36, "delta": 0, "item": "baseline", "commit": "4828daf", "note": "online full suite"},
+    {"iter": 1, "score": 87.36, "delta": 0, "item": "P0-1", "commit": "6142f48", "note": "batch_extract 解耦+evalcache桩兼容; 基建项无回退即通过; 顺带修 evalcache capped_batch 不接 **kwargs 的隐藏兼容 bug"}
   ],
   "todo": [
-    {"id": "P0-1", "title": "batch_extract 解耦硬上限(max_urls/concurrency/timeout env)+answer排序截断", "scores": false},
     {"id": "BUG-2", "title": "SSRF: allow_redirects=False+重定向复检+getaddrinfo 解析+trafilatura自抓", "scores": false},
     {"id": "P0-2", "title": "_multi_search 并发原语+子查询独立缓存, 替换串行扩展循环(含BUG-6)", "scores": false},
     {"id": "P0-3", "title": "plan_queries 对比意图加权fan-out+expand_mode, web_search暴露", "scores": true},
@@ -32,5 +32,7 @@
     {"id": "headB-compare_solutions", "title": "通用方案对比: SolutionComparator+矩阵+字段级引用+复用repo_facts+MCP/HTTP+bench用例", "scores": true},
     {"id": "docs", "title": "README/zh-CN/AGENT_INTEGRATION 工具表+requirements-optional 注明新依赖", "scores": false}
   ],
-  "done": []
+  "done": [
+    {"id": "P0-1", "commit": "6142f48", "note": "batch_extract 预算化 + answer 抽取与 num_sources 挂钩 + evalcache 桩兼容"}
+  ]
 }
