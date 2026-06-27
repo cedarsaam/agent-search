@@ -1,7 +1,7 @@
 {
-  "iter": 10,
+  "iter": 11,
   "best_score": 88.21,
-  "best_commit": "fac7aa9",
+  "best_commit": "ec36884",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -97,14 +97,17 @@
       "item": "Fuzzy-L1L2",
       "commit": "fac7aa9",
       "note": "L1L2容错;装rapidfuzz;L2加分未回退"
+    },
+    {
+      "iter": 10,
+      "score": 88.21,
+      "delta": 0,
+      "item": "Fuzzy-L3",
+      "commit": "ec36884",
+      "note": "L3 LLM纠拼写; 容错全链路完成"
     }
   ],
   "todo": [
-    {
-      "id": "Fuzzy-L3",
-      "title": "结果空时DeepSeek只纠拼写重搜",
-      "scores": true
-    },
     {
       "id": "headA-web_crawl",
       "title": "递归深抓2-6级: DeepCrawler+crawl4ai/纯PythonBFS双路径+护栏+MCP/HTTP/CLI+bench用例",
@@ -166,6 +169,11 @@
       "id": "Fuzzy-L1L2",
       "commit": "fac7aa9",
       "note": "rapidfuzz编辑距离纠错+L2模糊加分(装了rapidfuzz3.14.5);保CJK/语序;无回退;30单测"
+    },
+    {
+      "id": "Fuzzy-L3",
+      "commit": "ec36884",
+      "note": "_llm_spelling_rewrite 0结果兜底; 容错三件套L0-L3完成; 无回退;31单测"
     }
   ]
 }
