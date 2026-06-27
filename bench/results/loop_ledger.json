@@ -1,7 +1,7 @@
 {
-  "iter": 8,
-  "best_score": 87.77,
-  "best_commit": "2cb7601",
+  "iter": 9,
+  "best_score": 88.21,
+  "best_commit": "be1b251",
   "mode": "online",
   "python": "/Users/grahamhau/Developer/tools/agent-search-service/.venv/bin/python",
   "env_source": "/Users/grahamhau/Developer/tools/agent-search-service/.env",
@@ -13,7 +13,8 @@
     "type_scores baseline: search 83.41, ask 81.48, github 100, extract 100, map 75",
     "worktree 无 .env(gitignore), 评测前 source 父仓 .env 拿 DeepSeek key",
     "bench/cache 已填充, 后续评测网络走缓存(排序/清洗/打分新鲜重跑)",
-    "iter4 起 suite=53例, best_score 口径同步为53例(加了3条对比用例)"
+    "iter4 起 suite=53例, best_score 口径同步为53例(加了3条对比用例)",
+    "iter8: suite=55例; settings.yml brave spellcheck已commit但运行容器挂父仓settings,live corrections需用户同步父仓+restart;best_score=88.21口径含55例"
   ],
   "history": [
     {
@@ -79,14 +80,17 @@
       "item": "P0-5",
       "commit": "2cb7601",
       "note": "抽取召回优先+readability; 收益在装依赖的真实抓取"
+    },
+    {
+      "iter": 8,
+      "score": 88.21,
+      "delta": 0.44,
+      "item": "Fuzzy-L0",
+      "commit": "be1b251",
+      "note": "容错L0; suite53→55(+2拼错用例); 涨分"
     }
   ],
   "todo": [
-    {
-      "id": "Fuzzy-L0",
-      "title": "brave spellcheck+读corrections/suggestions+稀少时纠错重搜",
-      "scores": true
-    },
     {
       "id": "Fuzzy-L1L2",
       "title": "rapidfuzz编辑距离纠错+result_rank_score模糊加分(可选依赖降级)",
@@ -148,6 +152,11 @@
       "id": "P0-5",
       "commit": "2cb7601",
       "note": "trafilatura召回优先+readability兜底(均可选依赖静默降级); eval无回退"
+    },
+    {
+      "id": "Fuzzy-L0",
+      "commit": "be1b251",
+      "note": "读corrections+稀少时纠错重搜+brave spellcheck(settings已commit,需用户restart容器激活live); 55例88.21(+0.44)"
     }
   ]
 }
