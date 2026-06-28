@@ -14,6 +14,13 @@ class CacheKeyTest(unittest.TestCase):
         self.assertNotEqual(searx_key, flare_key)
         self.assertNotEqual(searx_key, more_key)
 
+    def test_cache_key_distinguishes_expand_mode(self):
+        # BUG-3: auto_rewrite 经 expand_mode(off/auto) 进缓存键, 不同扩展行为不再撞缓存
+        cache = SearchCache(db_path=":memory:")
+        off_key = cache._make_key("q", backend="searxng", expand_mode="off")
+        auto_key = cache._make_key("q", backend="searxng", expand_mode="auto")
+        self.assertNotEqual(off_key, auto_key)
+
 
 class UrlCleanTest(unittest.TestCase):
     def test_clean_url_removes_trailing_backslash_noise(self):
@@ -55,6 +62,32 @@ class ExtractionQualityTest(unittest.TestCase):
         cleaned = extractor._clean_text(long_line)
         self.assertIn("Guido van Rossum", cleaned)
         self.assertGreater(len(cleaned), 500)
+
+
+class BoilerplateCleanTest(unittest.TestCase):
+    def test_removes_boilerplate_keeps_content(self):
+        ex = ContentExtractor.__new__(ContentExtractor)
+        md = "\n".join([
+            "We use cookies to improve your experience. Accept all cookies",
+            "Sign in / Register",
+            "© 2024 Example Inc. All rights reserved.",
+            "[Home](/) · [About](/about) · [Contact](/contact)",
+            "本网站使用 Cookie 来提升体验",
+            "Python is a high-level language created by Guido van Rossum in 1991.",
+        ])
+        out = ex._clean_text(md)
+        self.assertIn("Guido van Rossum", out)
+        self.assertNotIn("rights reserved", out.lower())
+        self.assertNotIn("Sign in", out)
+        self.assertNotIn("Accept all cookies", out)
+        self.assertNotIn("About", out)            # 纯链接导航行被删
+        self.assertNotIn("提升体验", out)          # 中文 cookie 横幅被删
+
+    def test_long_prose_with_cookie_word_kept(self):
+        ex = ContentExtractor.__new__(ContentExtractor)
+        line = ("This article explains how browsers store cookies and how the HTTP "
+                "Set-Cookie response header works across many different scenarios.")
+        self.assertIn("Set-Cookie", ex._clean_text(line))
 
 
 class RankingTest(unittest.TestCase):
@@ -178,6 +211,309 @@ class SSRFGuardTest(unittest.TestCase):
         for u in ("https://docs.python.org/3/", "https://fastapi.tiangolo.com/",
                   "http://example.com/page"):
             self.assertTrue(url_is_safe(u), u)
+
+    def test_safe_get_rejects_redirect_to_internal(self):
+        # 公网起点过校验, 但服务端 302 跳内网 → 必须被拦
+        from search import safe_get
+
+        class _Resp:
+            def __init__(self, status, location=None):
+                self.status_code = status
+                self.headers = {"Location": location} if location else {}
+                self.is_redirect = location is not None and status in (301, 302, 303, 307, 308)
+
+        class _Sess:
+            def get(self, url, timeout=None, allow_redirects=False, **kw):
+                return _Resp(302, "http://127.0.0.1/secret")  # 永远跳内网
+
+        with self.assertRaises(ValueError):
+            safe_get(_Sess(), "http://93.184.216.34/start")  # 公网 IP 字面量起点
+
+    def test_dns_resolved_private_ip_blocked(self):
+        # 公网域名解析到内网(DNS rebinding) → 开启 DNS 校验时必须被拦
+        import os
+        import socket
+        import search
+        orig_gai, orig_flag = socket.getaddrinfo, os.environ.get("AGENT_SEARCH_RESOLVE_DNS")
+        socket.getaddrinfo = lambda host, *a, **k: [(2, 1, 6, "", ("10.0.0.7", 0))]
+        os.environ["AGENT_SEARCH_RESOLVE_DNS"] = "1"
+        try:
+            self.assertFalse(search.url_is_safe("http://looks-public.example/x"))
+        finally:
+            socket.getaddrinfo = orig_gai
+            if orig_flag is None:
+                os.environ.pop("AGENT_SEARCH_RESOLVE_DNS", None)
+            else:
+                os.environ["AGENT_SEARCH_RESOLVE_DNS"] = orig_flag
+
+
+class MultiSearchTest(unittest.TestCase):
+    def test_merges_dedups_and_counts_failures(self):
+        from search import SearchResponse
+
+        s = AgentSearch.__new__(AgentSearch)
+
+        class C:  # 假缓存: 永远 miss / no-op
+            def get_search(self, *a, **k):
+                return None
+
+            def set_search(self, *a, **k):
+                pass
+
+        s.cache = C()
+
+        def fake(q):
+            if q == "qerr":
+                return SearchResponse(query=q, error="boom")
+            if q == "q1":
+                return SearchResponse(query=q, results=[
+                    SearchResult(title="A", url="https://a.com/x"),
+                    SearchResult(title="B", url="https://b.com/y"),
+                ])
+            return SearchResponse(query=q, results=[
+                SearchResult(title="B2", url="https://b.com/y"),   # 与 q1 重复
+                SearchResult(title="C", url="https://c.com/z"),
+            ])
+
+        class SX:
+            def search(self, q, engines=None, **k):
+                return fake(q)
+
+        s.searxng = SX()
+        merged, perr, nfail = s._multi_search(["q1", "q2", "qerr"])
+        self.assertEqual([r.url for r in merged],
+                         ["https://a.com/x", "https://b.com/y", "https://c.com/z"])
+        self.assertIsNone(perr)       # 主查询 q1 成功
+        self.assertEqual(nfail, 1)    # qerr 失败被计数, 不静默吞
+
+
+class SolutionComparatorTest(unittest.TestCase):
+    def test_github_candidate_official_fields(self):
+        from search import SolutionComparator
+
+        class FakeGH:
+            def repo_facts(self, repo):
+                return {"repo": repo, "license": "MIT", "latest_release": "1.2.3",
+                        "days_since_commit": 5, "scorecard_overall": 8.0, "homepage": "", "flags": []}
+
+        class FakeEngine:
+            github = FakeGH()
+
+        r = SolutionComparator(FakeEngine()).compare(
+            candidates=["owner/repo"], dimensions=["许可", "最新版本", "维护活跃度"])
+        self.assertEqual([c["name"] for c in r["candidates"]], ["owner/repo"])
+        lic = r["matrix"]["许可"][0]
+        self.assertEqual(lic["value"], "MIT")
+        self.assertEqual(lic["confidence"], "official")   # GitHub 一手事实
+        self.assertTrue(lic["source_url"])                # 可追溯
+        self.assertEqual(r["matrix"]["最新版本"][0]["value"], "1.2.3")
+        self.assertIn("OpenSSF 8.0", r["matrix"]["维护活跃度"][0]["value"])
+
+    def test_no_candidates_returns_error(self):
+        from search import SolutionComparator
+
+        class FakeEngine:
+            pass
+
+        r = SolutionComparator(FakeEngine()).compare(candidates=[], topic="")
+        self.assertTrue(r["error"])
+        self.assertEqual(r["candidates"], [])
+
+
+class DeepCrawlerTest(unittest.TestCase):
+    def _ext(self):
+        class Ext:
+            def extract(self, url, method="auto"):
+                return {"url": url, "markdown": "body " + url, "title": "T", "method_used": "fake"}
+        return Ext()
+
+    def test_bfs_levels_dedup_and_scope(self):
+        from search import DeepCrawler
+        graph = {
+            "https://x.com/": [{"url": "https://x.com/a"}, {"url": "https://x.com/b"},
+                               {"url": "https://evil.com/z"}],
+            "https://x.com/a": [{"url": "https://x.com/c"}, {"url": "https://x.com/a"}],  # 含自链
+        }
+
+        class Map:
+            def _page_links(self, url, base, max_links=50, same_domain=True):
+                return graph.get(url, [])
+
+        r = DeepCrawler(self._ext(), Map()).crawl("https://x.com/", max_depth=2, max_pages=20)
+        urls = [p["url"] for p in r["pages"]]
+        self.assertIn("https://x.com/c", urls)            # depth2 子页抓到
+        self.assertNotIn("https://evil.com/z", urls)      # 跨域被 same-domain 拦
+        self.assertEqual(len(urls), len(set(urls)))       # canonical 去重
+        depths = {p["url"]: p["depth"] for p in r["pages"]}
+        self.assertEqual(depths["https://x.com/"], 0)
+        self.assertEqual(depths["https://x.com/c"], 2)
+
+    def test_max_pages_truncates(self):
+        from search import DeepCrawler
+
+        class Map:
+            def _page_links(self, url, base, max_links=50, same_domain=True):
+                return [{"url": f"https://x.com/p{len(url)}_{i}"} for i in range(5)]
+
+        r = DeepCrawler(self._ext(), Map()).crawl("https://x.com/", max_depth=6, max_pages=10)
+        self.assertEqual(r["total"], 10)
+        self.assertTrue(r["truncated"])
+        self.assertEqual(r["truncated_reason"], "max_pages")
+
+    def test_ssrf_blocks_internal_seed(self):
+        from search import DeepCrawler
+        r = DeepCrawler(None, None).crawl("http://127.0.0.1/secret", max_depth=1)
+        self.assertTrue(r["error"])
+        self.assertEqual(r["pages"], [])
+
+    def test_depth_cap_enforced(self):
+        from search import DeepCrawler
+
+        class Map:
+            def _page_links(self, url, base, max_links=50, same_domain=True):
+                return []
+
+        r = DeepCrawler(self._ext(), Map()).crawl("https://x.com/", max_depth=999, max_pages=5)
+        self.assertLessEqual(r["max_depth"], 6)           # 硬上限 CRAWL_MAX_DEPTH_CAP
+
+
+class FuzzyL0Test(unittest.TestCase):
+    def test_sparse_plus_corrections_triggers_research(self):
+        from search import SearchResponse
+
+        s = AgentSearch.__new__(AgentSearch)
+
+        class C:
+            def get_search(self, *a, **k):
+                return None
+
+            def set_search(self, *a, **k):
+                pass
+
+        class FS:
+            def is_available(self):
+                return False
+
+        s.cache = C()
+        s._prefer_searxng = True
+        s.flaresolverr = FS()
+        calls = []
+
+        def fake(q):
+            calls.append(q)
+            if q == "skil":  # 拼错: 1 条无关结果 + 引擎给纠正词 skill
+                return SearchResponse(query=q, source="searxng", corrections=["skill"],
+                                      results=[SearchResult(title="SKIL power tools", url="https://skil.com/")])
+            if q == "skill":  # 纠正后: 多条正确结果
+                return SearchResponse(query=q, source="searxng", results=[
+                    SearchResult(title="Skills - Claude", url="https://code.claude.com/docs/skills"),
+                    SearchResult(title="Skill guide", url="https://example.com/skill"),
+                ])
+            return SearchResponse(query=q, source="searxng")
+
+        class SX:
+            def search(self, q, engines=None, **k):
+                return fake(q)
+
+        s.searxng = SX()
+        res = s.search("skil", top_k=10)
+        urls = [r["url"] for r in res["results"]]
+        self.assertIn("skill", calls)                          # 触发了纠正重搜
+        self.assertTrue(any("claude.com" in u for u in urls))  # 纠正结果已并入
+
+
+class FuzzyCorrectTest(unittest.TestCase):
+    def setUp(self):
+        try:
+            import rapidfuzz  # noqa: F401
+        except ImportError:
+            self.skipTest("rapidfuzz 未安装(可选依赖)")
+
+    def test_corrects_typo_against_vocab(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        vocab = set(COMMON_TECH_TERMS)
+        self.assertEqual(fuzzy_correct_query("skil", vocab), ["skill"])
+        # 保留 CJK 与语序: 只换拼错的 ASCII token
+        self.assertEqual(fuzzy_correct_query("kuberntes 部署", vocab), ["kubernetes 部署"])
+
+    def test_correct_word_not_changed(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        self.assertEqual(fuzzy_correct_query("python tutorial", set(COMMON_TECH_TERMS)), [])
+
+    def test_no_overcorrect_unrelated(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        self.assertEqual(fuzzy_correct_query("zzqx", set(COMMON_TECH_TERMS)), [])
+
+    def test_cjk_only_query_no_correction(self):
+        from search import fuzzy_correct_query, COMMON_TECH_TERMS
+        self.assertEqual(fuzzy_correct_query("数据库 选型", set(COMMON_TECH_TERMS)), [])
+
+
+class FuzzyL3Test(unittest.TestCase):
+    def test_llm_rewrite_when_zero_results(self):
+        from search import SearchResponse
+
+        s = AgentSearch.__new__(AgentSearch)
+
+        class C:
+            def get_search(self, *a, **k):
+                return None
+
+            def set_search(self, *a, **k):
+                pass
+
+        class FS:
+            def is_available(self):
+                return False
+
+        class LLM:
+            def is_configured(self):
+                return True
+
+            def chat(self, messages, temperature=0.0, max_tokens=60):
+                return {"content": "kubernetes deployment"}
+
+        s.cache, s._prefer_searxng, s.flaresolverr, s.llm = C(), True, FS(), LLM()
+
+        def fake(q):
+            if q == "kubernetes deployment":  # LLM 纠正后才有结果
+                return SearchResponse(query=q, source="searxng", results=[
+                    SearchResult(title="Deployments", url="https://kubernetes.io/docs/")])
+            return SearchResponse(query=q, source="searxng", results=[])  # 原查询及 L1 变体 0 结果
+
+        class SX:
+            def search(self, q, engines=None, **k):
+                return fake(q)
+
+        s.searxng = SX()
+        res = s.search("zzkuberntes zzdeploymnt", top_k=10)  # 故意让 L1 词典纠不动
+        self.assertTrue(any("kubernetes.io" in r["url"] for r in res["results"]))
+
+
+class PlanQueriesTest(unittest.TestCase):
+    def test_compare_intent_fans_out(self):
+        from search import plan_queries
+        plan = plan_queries("Postgres vs MySQL", "auto")
+        subs = [p[0] for p in plan]
+        self.assertTrue(any("alternatives" in s for s in subs))
+        self.assertTrue(any("comparison" in s for s in subs))
+        self.assertTrue(all(0 < p[1] <= 1 for p in plan))   # 权重在 (0,1]
+        self.assertLessEqual(len(plan), 5)                  # 封顶 PLAN_MAX_SUBQ
+
+    def test_zh_compare_intent(self):
+        from search import plan_queries
+        plan = plan_queries("Redis 和 Memcached 的区别", "auto")
+        self.assertTrue(plan)  # "区别" 命中对比意图
+
+    def test_non_compare_no_angle_fanout(self):
+        from search import plan_queries
+        subs = [p[0] for p in plan_queries("python asyncio tutorial", "auto")]
+        # 文档意图只加 official, 不应有对比角度子查询
+        self.assertTrue(all("benchmark" not in s and "alternatives" not in s for s in subs))
+
+    def test_off_mode_empty(self):
+        from search import plan_queries
+        self.assertEqual(plan_queries("X vs Y", "off"), [])
 
 
 if __name__ == "__main__":

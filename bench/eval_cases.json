@@ -1038,5 +1038,195 @@
     "requires_flaresolverr": false,
     "requires_deep": false,
     "notes": "考中英混合概念问答(ask+RAG)能否引用 Kubernetes 官方文档并解释 Pod 与容器关系"
+  },
+  {
+    "id": "c_redis_vs_memcached",
+    "type": "search",
+    "query": "Redis vs Memcached 对比 选型",
+    "expected_domains": [
+      "redis.io",
+      "memcached.org",
+      "aws.amazon.com",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "Redis",
+      "Memcached"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "对比意图 fan-out: 验证 Redis/Memcached 选型能并发扇出找全候选并命中权威源"
+  },
+  {
+    "id": "c_postgres_vs_mysql",
+    "type": "search",
+    "query": "PostgreSQL vs MySQL alternatives comparison",
+    "expected_domains": [
+      "postgresql.org",
+      "mysql.com",
+      "db-engines.com",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "PostgreSQL",
+      "MySQL"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "对比意图 fan-out: 数据库选型对比, 验证 alternatives/comparison 角度扇出"
+  },
+  {
+    "id": "c_fastapi_vs_flask",
+    "type": "search",
+    "query": "FastAPI vs Flask 哪个好 选型",
+    "expected_domains": [
+      "fastapi.tiangolo.com",
+      "flask.palletsprojects.com",
+      "github.com",
+      "en.wikipedia.org"
+    ],
+    "must_include_terms": [
+      "FastAPI",
+      "Flask"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "any",
+    "max_latency_ms": 15000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "对比意图 fan-out: Python web 框架选型, 验证中文'哪个好/选型'触发对比扇出"
+  },
+  {
+    "id": "f_typo_kubernetes",
+    "type": "search",
+    "query": "kuberntes deployment guide",
+    "expected_domains": [
+      "kubernetes.io"
+    ],
+    "must_include_terms": [
+      "Kubernetes",
+      "deployment"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "容错: 拼错 kuberntes 仍应命中 kubernetes.io(引擎容错或纠错重搜)"
+  },
+  {
+    "id": "f_typo_python_async",
+    "type": "search",
+    "query": "pyton asyncio coroutines",
+    "expected_domains": [
+      "docs.python.org",
+      "realpython.com"
+    ],
+    "must_include_terms": [
+      "asyncio"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 12000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "容错: 拼错 pyton 仍应命中 Python 官方 asyncio 文档"
+  },
+  {
+    "id": "crawl_python_docs",
+    "type": "crawl",
+    "url": "https://docs.python.org/3/",
+    "max_depth": 1,
+    "max_pages": 6,
+    "scope": "same-domain",
+    "must_include_terms": [
+      "Python"
+    ],
+    "expected_domains": [
+      "docs.python.org"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": true,
+    "notes": "递归深抓: docs.python.org 抓>=2页(含depth1子页)且有正文、同域"
+  },
+  {
+    "id": "crawl_fastapi_docs",
+    "type": "crawl",
+    "url": "https://fastapi.tiangolo.com/",
+    "max_depth": 1,
+    "max_pages": 6,
+    "scope": "same-domain",
+    "must_include_terms": [
+      "FastAPI"
+    ],
+    "expected_domains": [
+      "fastapi.tiangolo.com"
+    ],
+    "avoid_domains": [],
+    "preferred_source_type": "docs",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": true,
+    "notes": "递归深抓: FastAPI 文档站抓>=2页且有正文、同域(验证深抓另一站点)"
+  },
+  {
+    "id": "cmp_web_frameworks",
+    "type": "compare",
+    "candidates": [
+      "tiangolo/fastapi",
+      "pallets/flask"
+    ],
+    "dimensions": [
+      "许可",
+      "最新版本",
+      "维护活跃度"
+    ],
+    "must_include_terms": [],
+    "expected_domains": [],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "通用对比: GitHub 候选 fastapi/flask 取一手事实填矩阵(许可/版本/维护),每格 confidence=official 带来源"
+  },
+  {
+    "id": "cmp_orm_libs",
+    "type": "compare",
+    "candidates": [
+      "sqlalchemy/sqlalchemy",
+      "django/django"
+    ],
+    "dimensions": [
+      "许可",
+      "最新版本",
+      "维护活跃度"
+    ],
+    "must_include_terms": [],
+    "expected_domains": [],
+    "avoid_domains": [],
+    "preferred_source_type": "github",
+    "max_latency_ms": 40000,
+    "allow_network": true,
+    "requires_flaresolverr": false,
+    "requires_deep": false,
+    "notes": "通用对比: 另一组 GitHub 候选验证矩阵稳定"
   }
 ]

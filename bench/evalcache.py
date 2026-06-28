@@ -208,8 +208,9 @@ def activate(engine, budget: Budget):
     # 评测层: 收敛 RAG 抓取扇出, 避免一次 ask 抓 8 个 URL 把预算打满
     orig_batch = engine.extractor.batch_extract
 
-    def capped_batch(urls, method="auto"):
-        return orig_batch(urls[:EVAL_MAX_EXTRACT], method=method)
+    def capped_batch(urls, method="auto", **kwargs):
+        # 透传 max_urls/concurrency/timeout_s 等新参数; 评测层仍用 EVAL_MAX_EXTRACT 收敛扇出
+        return orig_batch(urls[:EVAL_MAX_EXTRACT], method=method, **kwargs)
 
     engine.extractor.batch_extract = capped_batch
 
@@ -222,6 +223,9 @@ def activate(engine, budget: Budget):
             self.text = d["text"]
             self.encoding = d.get("encoding")
             self.apparent_encoding = d.get("apparent_encoding") or "utf-8"
+            # 缓存的是抓取后的最终响应, 视为非重定向(供 search.safe_get 的逐跳校验使用)
+            self.is_redirect = False
+            self.headers = {}
 
         def raise_for_status(self):
             if self.status_code >= 400:

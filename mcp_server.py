@@ -30,7 +30,8 @@ def engine() -> AgentSearch:
 
 @mcp.tool()
 def web_search(query: str, top_k: int = 8, use_flaresolverr: bool = False,
-               time_range: str = "", categories: str = "", language: str = "") -> list:
+               time_range: str = "", categories: str = "", language: str = "",
+               expand_mode: str = "auto") -> list:
     """联网搜索，返回结果列表(标题/URL/摘要)。
 
     需要实时信息、新闻、技术文档、查资料时调用本工具，而不是凭记忆回答。
@@ -47,6 +48,9 @@ def web_search(query: str, top_k: int = 8, use_flaresolverr: bool = False,
         time_range: 时间范围 day/month/year，留空不过滤
         categories: SearXNG 分类，逗号分隔，如 general,news
         language: 语言代码，如 zh-CN / en-US
+        expand_mode: 多查询扩展策略 off/auto/compare。auto(默认)识别"对比/选型"意图后
+                     自动多角度并发扇出(alternatives/comparison/benchmark/best)把候选找全；
+                     compare 强制扇出(找方案做选型时用)；off 只搜原词。
     """
     cats = [c.strip() for c in categories.split(",") if c.strip()] if categories else None
     res = engine().search(
@@ -56,6 +60,7 @@ def web_search(query: str, top_k: int = 8, use_flaresolverr: bool = False,
         time_range=time_range or None,
         categories=cats,
         language=language or None,
+        expand_mode=expand_mode or "auto",
     )
     return [
         {"title": r["title"], "url": r["url"], "snippet": r.get("snippet", ""), "rank_score": r.get("rank_score")}
@@ -108,6 +113,33 @@ def web_map(url: str, max_links: int = 50, same_domain: bool = True) -> dict:
 
 
 @mcp.tool()
+def web_crawl(url: str, max_depth: int = 2, max_pages: int = 30, scope: str = "same-domain",
+              include: list = [], exclude: list = [], relevance: str = "",
+              return_markdown: bool = True) -> dict:
+    """递归深抓：从一个 URL 出发沿链接抓到 2~6 级正文(web_map 只发现单层链接, 这个会抓正文)。
+
+    需要把一个文档站/方案站"顺着链接抓深"——抓到二三四五六级子页正文——时用本工具。
+    建议先用 web_map 看站点结构, 再用 web_crawl 深抓需要的子树。装了 crawl4ai 走其深抓策略,
+    没装则纯 Python BFS 兜底(都带 SSRF 防护与预算护栏, 不会无限抓)。
+
+    Args:
+        url: 起始 URL
+        max_depth: 抓取深度(起始页之外的层数, 1=再抓一层子页, 上限 6)。要"2~6 级"就传 2~6。
+        max_pages: 总页数上限(默认 30, 硬上限 120)
+        scope: 范围 same-domain(默认, 只抓同域) / path-prefix(同域且同路径前缀) / any(可跟外链)
+        include: 只抓 URL 命中这些正则的页(可空)
+        exclude: 跳过 URL 命中这些正则的页(可空)
+        relevance: 给了关键词则按 URL 相关性 best-first 优先抓(抓"最相关的子页")
+        return_markdown: 是否返回每页正文 markdown(默认 True; 只想要链接树可设 False)
+    """
+    return engine().crawl(
+        url, max_depth=max_depth, max_pages=max_pages, scope=scope,
+        include=list(include) or None, exclude=list(exclude) or None,
+        relevance=relevance, return_markdown=return_markdown,
+    )
+
+
+@mcp.tool()
 def github_search(query: str, kind: str = "repos", limit: int = 5) -> dict:
     """在 GitHub 上搜索仓库/代码/issue/PR(走本机已登录的 gh CLI，比网页搜索精准)。
 
@@ -141,6 +173,31 @@ def github_compare(repos: list[str] = [], query: str = "", limit: int = 5) -> di
         limit: query 模式下取多少个候选（默认 5）
     """
     return engine().github_compare(repos=list(repos) or None, query=query or None, limit=limit)
+
+
+@mcp.tool()
+def compare_solutions(topic: str = "", candidates: list = [], dimensions: list = [],
+                      num_sources: int = 3, use_llm: bool = False) -> dict:
+    """通用方案对比：把任意候选(开源库/SaaS/云服务/框架)拉齐成对比矩阵，每格带来源可追溯。
+
+    做"选型/对比"时用：给一组 candidates(或一个 topic 让它发现候选)，按维度拉齐成矩阵。
+    GitHub 仓库候选会自动取一手事实(license/最新 release/维护活跃度/OpenSSF 健康分, confidence=official)；
+    非 GitHub 方案走官方页抽取(定价/版本/许可等规则抽取, confidence=secondary)。每格带 source_url+excerpt。
+
+    与 github_compare 的区别：纯 GitHub 仓库且只要健康分用 github_compare(更快)；
+    含非 GitHub / 要定价 / 要适用场景用本工具(更全, 字段级引用)。结论由你/用户判断，本工具只给证据。
+
+    Args:
+        topic: 对比主题(不给 candidates 时用它发现候选)，如 "python web framework"
+        candidates: 候选列表，"owner/repo"(GitHub) 或产品名/官网域名；给了就直接对比这些
+        dimensions: 对比维度，留空用默认[最新版本/定价/许可/维护活跃度/性能/生态/适用场景]
+        num_sources: 每个候选抓取的来源数(默认 3)
+        use_llm: 是否用 LLM 补抽软维度(性能/适用场景等，需配 LLM key；默认 False 只走规则+一手事实)
+    """
+    return engine().compare_solutions(
+        topic=topic, candidates=list(candidates) or None,
+        dimensions=list(dimensions) or None, num_sources=num_sources, use_llm=use_llm,
+    )
 
 
 @mcp.tool()

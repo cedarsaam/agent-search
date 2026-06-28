@@ -55,7 +55,7 @@ except ImportError:
 SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://localhost:8888")
 CACHE_DIR = os.environ.get("CACHE_DIR", os.path.expanduser("~/.cache/agent-search"))
 CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL", "3600"))  # 1h default
-CACHE_SCHEMA_VERSION = 6
+CACHE_SCHEMA_VERSION = 7  # v7: cache_options 纳入 expand_mode(覆盖 auto_rewrite 维度, 修 BUG-3)
 JINA_READER = "https://r.jina.ai"     # URL→Markdown (免费)
 REQUEST_TIMEOUT = 15
 
@@ -92,6 +92,12 @@ _load_dotenv()
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+
+# 批量抽取预算(可配): 宽召回(answer / 方案对比)场景的并发抽取上限。
+# 旧实现把 8 条 / 6 worker 写死, 宽召回时优质候选抽不到、answer 凑不够来源。
+EXTRACT_MAX_URLS = int(os.environ.get("EXTRACT_MAX_URLS", "12"))
+EXTRACT_CONCURRENCY = int(os.environ.get("EXTRACT_CONCURRENCY", "8"))
+EXTRACT_TIMEOUT_S = int(os.environ.get("EXTRACT_TIMEOUT_S", "20"))
 
 # SearXNG 默认启用的引擎 (settings.yml 中配置的)
 DEFAULT_ENGINES = [
@@ -132,12 +138,37 @@ def _ip_blocked(addr) -> bool:
             or addr.is_reserved or addr.is_multicast or addr.is_unspecified)
 
 
+def _dns_check_enabled() -> bool:
+    """DNS 解析校验默认关。常见 fake-ip / 分裂 DNS / 透明代理环境会把公网域名解析到
+    198.18.0.0/15 等保留段, 开了会全量误杀。硬化的直连部署可设 AGENT_SEARCH_RESOLVE_DNS=1。"""
+    return os.environ.get("AGENT_SEARCH_RESOLVE_DNS", "0").lower() in ("1", "true", "yes")
+
+
+def _resolve_ips_blocked(host: str) -> bool:
+    """解析主机名的全部 A/AAAA, 任一落在私网/环回/保留即拦截(防 DNS rebinding /
+    公网域名解析到内网)。解析失败返回 False(交给后续请求自行失败, 不因解析不了误判)。"""
+    import socket
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except (socket.gaierror, UnicodeError, OSError, ValueError):
+        return False
+    for info in infos:
+        ip = (info[4][0] or "").split("%")[0]  # 去 IPv6 scope id
+        try:
+            if _ip_blocked(ipaddress.ip_address(ip)):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def url_is_safe(url: str) -> bool:
-    """抓取前的 SSRF 校验(拦截标准 SSRF 载荷, 不依赖 DNS 解析以便各环境通用)。
+    """抓取前的 SSRF 校验(拦截标准 SSRF 载荷)。
 
     - IP 字面量按私网/环回/链路本地(含云元数据 169.254.169.254)/保留判定并拒绝。
     - 明显内部主机名(localhost / *.local / *.internal 等)拒绝。
-    - 其余公网主机名放行(其解析与抓取交由 requests)。
+    - 公网主机名: 仅当 AGENT_SEARCH_RESOLVE_DNS=1 时解析 A/AAAA, 任一指向内网即拒绝
+      (防 DNS rebinding; 默认关, 因 fake-ip/透明代理环境会误杀)。
     可设 AGENT_SEARCH_ALLOW_PRIVATE=1 整体放开(用于抓本地/内网文档)。
     """
     if ALLOW_PRIVATE_URLS:
@@ -155,7 +186,29 @@ def url_is_safe(url: str) -> bool:
         pass
     if host.lower() == "localhost" or _INTERNAL_HOST_RE.search(host):
         return False
+    if _dns_check_enabled() and _resolve_ips_blocked(host):
+        return False
     return True
+
+
+# 抓取统一走 safe_get: 禁用自动重定向, 对每一跳 Location 重新做 url_is_safe 校验后才跟随,
+# 堵住"公网 URL 过校验 → 服务端 302 跳内网/元数据"的 SSRF 绕过。
+MAX_REDIRECTS = 4
+
+
+def safe_get(session, url, *, timeout=REQUEST_TIMEOUT, max_redirects=MAX_REDIRECTS, **kwargs):
+    """SSRF 安全的 GET。逐跳校验重定向目标; 目标不安全抛 ValueError, 跳数超限亦然。"""
+    kwargs.pop("allow_redirects", None)
+    current = url
+    for _ in range(max_redirects + 1):
+        if not url_is_safe(current):
+            raise ValueError(f"SSRF 拒绝(指向私网/环回/保留地址): {current}")
+        resp = session.get(current, timeout=timeout, allow_redirects=False, **kwargs)
+        if resp.is_redirect:  # 状态码属重定向且带 Location
+            current = urljoin(current, resp.headers.get("Location", ""))
+            continue
+        return resp
+    raise ValueError(f"重定向过多(>{max_redirects}): {url}")
 
 
 def normalize_repo_slug(repo: str) -> str:
@@ -233,6 +286,37 @@ def text_quality_ok(text: str, min_chars: int = 120) -> bool:
     return True
 
 
+# 自然语言样板行(cookie 横幅/登录注册/分享/版权/订阅/导航)。只对"短行"生效, 长正文永不删。
+_BOILERPLATE_RE = re.compile(
+    r"(we use cookies|accept (all )?cookies|cookie (settings|policy|preferences|consent)|"
+    r"manage (your )?(cookies|preferences)|this (site|website) uses cookies|"
+    r"sign\s?in|sign\s?up|log\s?in|create (an )?account|"
+    r"subscribe to (our )?newsletter|sign up for|"
+    r"skip to (main )?content|back to top|"
+    r"all rights reserved|©\s?\d{4}|\(c\)\s?\d{4}|"
+    r"share (on|this)|follow us on|"
+    r"本(网站|站)使用|使用\s?cookie|我们使用\s?cookie|cookie\s?(设置|政策|偏好|声明)|"
+    r"立即(登录|注册)|登录\s?[/·|]\s?注册|"
+    r"版权所有|保留所有权利|订阅(我们的)?(电子报|新闻|资讯|邮件)|"
+    r"分享到|关注我们|返回顶部|跳(到|转)(主要)?内容)",
+    re.I)
+
+
+def _is_boilerplate_line(line: str) -> bool:
+    """判定一行是否为样板(只对短行生效, 保护长正文/段落)。"""
+    if len(line) > 80:                       # 长行视为正文, 永不删
+        return False
+    if _BOILERPLATE_RE.search(line):
+        return True
+    # 纯链接/导航短行: 去掉 markdown 链接/裸 URL/分隔符后近乎为空
+    stripped = re.sub(r"\[[^\]]*\]\([^)]*\)", "", line)
+    stripped = re.sub(r"https?://\S+", "", stripped)
+    stripped = re.sub(r"[\s|·•‹›<>/\\\-—_]+", "", stripped)
+    if (line.count("](") >= 3 or line.lower().count("http") >= 3) and len(stripped) <= 3:
+        return True
+    return False
+
+
 def query_terms(query: str) -> list[str]:
     """提取用于片段相关性排序的轻量关键词。"""
     terms = []
@@ -265,6 +349,121 @@ def query_expansions(query: str) -> list[str]:
     if DOC_INTENT_RE.search(query or ""):
         return [f"{query} official documentation"]
     return []
+
+
+# "对比/选型"意图: 命中则把查询扇出成多角度子查询, 一次并发把候选方案找全找快。
+COMPARE_INTENT_RE = re.compile(
+    r"\b(vs\.?|versus|alternatives?|compare|comparison|which\s+is\s+better)\b"
+    r"|对比|相比|选型|哪个好|哪个更好|哪个比较好|区别|替代|代替|孰优|谁更", re.I)
+
+PLAN_MAX_SUBQ = int(os.environ.get("PLAN_MAX_SUBQ", "5"))
+
+# 容错搜索: 结果数低于此阈值才触发"纠错重搜"(短路, 正常查询零额外开销)
+FUZZY_MIN_RESULTS = int(os.environ.get("FUZZY_MIN_RESULTS", "3"))
+
+# 容错纠错(L1) 内置高频技术词表(硬兜底, 可继续补)。rapidfuzz 为可选依赖, 缺失则整层静默降级。
+COMMON_TECH_TERMS = {
+    "skill", "skills", "python", "javascript", "typescript", "kubernetes", "docker",
+    "anthropic", "claude", "openai", "deepseek", "pydantic", "fastapi", "flask", "django",
+    "asyncio", "async", "await", "coroutine", "numpy", "pandas", "pytorch", "tensorflow",
+    "postgres", "postgresql", "mysql", "sqlite", "redis", "memcached", "mongodb", "kafka",
+    "nginx", "react", "vue", "svelte", "nextjs", "node", "express", "rust", "golang",
+    "rapidfuzz", "searxng", "trafilatura", "crawl4ai", "selenium", "playwright", "tutorial",
+    "documentation", "pricing", "comparison", "benchmark", "alternatives", "kubernetes",
+}
+
+
+def _ascii_tokens(query: str) -> list[str]:
+    """仅取 ASCII token 用于编辑距离纠错; CJK 不参与(靠字形而非编辑距离, 交给 L0/L3)。"""
+    return [t for t in query_terms(query) if re.fullmatch(r"[a-z0-9_.-]+", t)]
+
+
+def build_correction_vocab(cache, results) -> set:
+    """纠错词典 = 内置词表 ∪ 本轮结果 title token ∪ 历史查询 token(尽力而为, 失败忽略)。"""
+    vocab = set(COMMON_TECH_TERMS)
+    for r in results or []:
+        for t in re.findall(r"[a-z0-9_.-]{3,}", (getattr(r, "title", "") or "").lower()):
+            vocab.add(t)
+    try:
+        with sqlite3.connect(cache.db_path) as conn:
+            for (key,) in conn.execute("SELECT cache_key FROM search_cache LIMIT 500"):
+                q = json.loads(key).get("query", "")
+                for t in re.findall(r"[a-z0-9_.-]{3,}", q.lower()):
+                    vocab.add(t)
+    except Exception:
+        pass
+    return vocab
+
+
+def fuzzy_correct_query(query: str, vocab: set, max_fix: int = 2) -> list[str]:
+    """对 query 的 ASCII token 做编辑距离纠错, 生成至多 1 个纠正变体(保留 CJK/语序)。
+
+    误纠防护: token 已在词典→跳过(正确词不纠); 相似度 >=88 且编辑距离 <= 长度自适应阈值
+    (len<=4→1, <=8→2, 否则 3) 才替换; 一次最多纠 max_fix 个。rapidfuzz 未装→[] 静默降级。
+    """
+    try:
+        from rapidfuzz import process, fuzz, distance
+    except ImportError:
+        return []
+    if not vocab:
+        return []
+    vocab_lower = {v.lower() for v in vocab}
+    fixes, fixed = {}, 0
+    for tok in dict.fromkeys(_ascii_tokens(query)):
+        if fixed >= max_fix or tok in vocab_lower:
+            continue
+        max_dist = 1 if len(tok) <= 4 else (2 if len(tok) <= 8 else 3)
+        cand = process.extractOne(tok, vocab_lower, scorer=fuzz.ratio, score_cutoff=88)
+        if not cand:
+            continue
+        best = cand[0]
+        if best != tok and distance.Levenshtein.distance(tok, best) <= max_dist:
+            fixes[tok] = best
+            fixed += 1
+    if not fixes:
+        return []
+    variant = query
+    for tok, best in fixes.items():           # 就地替换 typo token, 不破坏 CJK/语序/其余词
+        variant = re.sub(rf"\b{re.escape(tok)}\b", best, variant, flags=re.I)
+    return [variant] if variant.lower() != query.strip().lower() else []
+
+
+def plan_queries(query: str, mode: str = "auto") -> list[tuple]:
+    """把查询规划成 (子查询, 权重, 标签) 列表(不含原查询)。
+
+    mode:
+      off     → 不扩展, 返回 []
+      compare → 强制对比扇出(alternatives/comparison/benchmark/best + 官方增强)
+      auto    → 命中对比意图才扇出, 否则退化为 query_expansions(文档/价格官方增强)
+    权重<1, 供调用方轻度下压"角度子查询"的结果, 避免 best/benchmark 类软文盖过官方源。
+    子查询数封顶 PLAN_MAX_SUBQ。
+    """
+    if mode == "off":
+        return []
+    q = (query or "").strip()
+    if not q:
+        return []
+    is_compare = mode == "compare" or bool(COMPARE_INTENT_RE.search(q))
+    plan: list[tuple] = []
+    if is_compare:
+        plan += [
+            (f"{q} alternatives", 0.85, "alt"),
+            (f"{q} comparison", 0.85, "vs"),
+            (f"{q} benchmark", 0.7, "benchmark"),
+            (f"best {q}", 0.7, "best"),
+        ]
+    for e in query_expansions(q):           # 官方文档/价格增强(对比与非对比都加)
+        plan.append((e, 0.9, "official"))
+    # 去重 + 去掉与原查询相同 + 封顶
+    seen, out = set(), []
+    for subq, w, tag in plan:
+        k = subq.lower()
+        if subq and k != q.lower() and k not in seen:
+            seen.add(k)
+            out.append((subq, w, tag))
+        if len(out) >= PLAN_MAX_SUBQ:
+            break
+    return out
 
 
 def result_rank_score(query: str, result: "SearchResult", index: int) -> float:
@@ -310,6 +509,21 @@ def result_rank_score(query: str, result: "SearchResult", index: int) -> float:
 
     if re.search(r"20\d{2}[-年/]\d{1,2}|latest|release|changelog|更新|发布", text):
         score += 0.6
+
+    # 容错 L2: query 中"未精确出现在标题"的 ASCII 词, 用模糊匹配补分(近形命中也能浮上来)。
+    # rapidfuzz 可选, 缺失则跳过(排序退化为现有行为)。
+    try:
+        from rapidfuzz import fuzz
+        title_l = (result.title or "").lower()
+        fuzzy_bonus = 0.0
+        for t in terms:
+            if len(t) < 4 or not re.fullmatch(r"[a-z0-9_.-]+", t) or t in title_l:
+                continue
+            if fuzz.partial_ratio(t, title_l) >= 88:
+                fuzzy_bonus += 1.0
+        score += min(fuzzy_bonus, 3.0)
+    except ImportError:
+        pass
     return score
 
 
@@ -341,6 +555,8 @@ class SearchResponse:
     elapsed_ms: int = 0
     engines_used: list = field(default_factory=list)
     error: Optional[str] = None
+    corrections: list = field(default_factory=list)   # SearXNG 拼写纠正词(brave spellcheck 等引擎贡献)
+    suggestions: list = field(default_factory=list)   # SearXNG 相关查询建议
 
 
 # ================================================================
@@ -526,12 +742,20 @@ class SearXNGEngine:
                     seen.add(key)
                     deduped.append(r)
 
+            # 拼写纠正/相关建议(每项形如 {"title": 词, "url": 表单值}, 取 title 才是干净 query)
+            corrections = [c.get("title", "").strip() for c in data.get("corrections", [])
+                           if isinstance(c, dict) and c.get("title", "").strip()]
+            suggestions = [s.get("title", "").strip() for s in data.get("suggestions", [])
+                           if isinstance(s, dict) and s.get("title", "").strip()]
+
             return SearchResponse(
                 query=query,
                 results=deduped,
                 total=len(deduped),
                 source="searxng",
                 engines_used=list(set(r.engine for r in deduped if r.engine)),
+                corrections=corrections,
+                suggestions=suggestions,
             )
 
         except requests.exceptions.ConnectionError:
@@ -890,6 +1114,8 @@ class ContentExtractor:
                 continue
             if re.search(r"\._?[A-Za-z0-9_-]+:where\(", line):
                 continue
+            if _is_boilerplate_line(line):   # cookie/登录/版权/纯链接等样板短行
+                continue
             lines.append(line)
         cleaned = "\n".join(lines)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
@@ -903,29 +1129,31 @@ class ContentExtractor:
             if method == "trafilatura":
                 import trafilatura
 
-                try:
-                    downloaded = trafilatura.fetch_url(url, timeout=REQUEST_TIMEOUT)
-                except TypeError:
-                    # 不同版本 fetch_url 签名不一致(部分版本无 timeout)
-                    downloaded = trafilatura.fetch_url(url)
+                # 用 safe_get 自抓(逐跳校验重定向), 再喂给 trafilatura.extract;
+                # 不用 trafilatura.fetch_url —— 它自管重定向会绕过 SSRF 校验。
+                resp = safe_get(self.session, url)
+                resp.raise_for_status()
+                if not resp.encoding or resp.encoding.lower() in {"iso-8859-1", "latin-1"}:
+                    resp.encoding = resp.apparent_encoding or "utf-8"
+                downloaded = resp.text
                 if not downloaded:
                     return {"url": url, "markdown": "", "method_used": "trafilatura", "error": "empty download"}
-                try:
-                    md = trafilatura.extract(
-                        downloaded,
-                        output_format="markdown",
-                        include_comments=False,
-                        include_tables=True,
-                        include_links=True,
-                        favor_precision=True,
-                    )
-                except TypeError:
-                    md = trafilatura.extract(
-                        downloaded,
-                        include_comments=False,
-                        include_tables=True,
-                        favor_precision=True,
-                    )
+
+                def _extract(favor):
+                    # 老版 trafilatura 无 output_format/include_links 时 TypeError, 退到精简签名
+                    kw = {favor: True}
+                    try:
+                        return trafilatura.extract(
+                            downloaded, output_format="markdown", include_comments=False,
+                            include_tables=True, include_links=True, **kw)
+                    except TypeError:
+                        return trafilatura.extract(
+                            downloaded, include_comments=False, include_tables=True, **kw)
+
+                # 普通抽取召回优先(对比/选型场景少丢正文); 召回结果空/质量差时再降到精确优先
+                md = _extract("favor_recall")
+                if not md or not text_quality_ok(md):
+                    md = _extract("favor_precision") or md
                 if not md:
                     return {"url": url, "markdown": "", "method_used": "trafilatura", "error": "empty extraction"}
                 return {"url": url, "markdown": md, "title": "", "method_used": "trafilatura", "error": None}
@@ -974,27 +1202,38 @@ class ContentExtractor:
                         "error": None if md else "crawl4ai 返回空正文"}
 
             elif method == "requests":
-                r = self.session.get(url, timeout=REQUEST_TIMEOUT)
+                r = safe_get(self.session, url)  # 逐跳校验重定向, 防 SSRF
                 r.raise_for_status()
                 if not r.encoding or r.encoding.lower() in {"iso-8859-1", "latin-1"}:
                     r.encoding = r.apparent_encoding or "utf-8"
                 html = r.text
+                title, text = "", ""
+                # 主体识别优先 readability-lxml(按文本密度选正文, 更准); 未装/失败/质量差回退 bs4 启发式
                 try:
+                    from readability import Document
                     from bs4 import BeautifulSoup
-                    soup = BeautifulSoup(html, "lxml")
-                    for tag in soup([
-                        "script", "style", "noscript", "template", "svg", "canvas",
-                        "header", "footer", "nav", "aside", "form",
-                    ]):
-                        tag.decompose()
-                    title = soup.title.get_text(" ", strip=True) if soup.title else ""
-                    main = soup.find("main") or soup.find("article") or soup.body or soup
-                    text = main.get_text("\n", strip=True)
+                    doc = Document(html)
+                    title = (doc.short_title() or "").strip()
+                    text = BeautifulSoup(doc.summary(html_partial=True), "lxml").get_text("\n", strip=True)
                 except Exception:
-                    title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.I | re.S)
-                    title = title_match.group(1).strip() if title_match else ""
-                    text = re.sub(r'<(script|style|noscript|template)[^>]*>.*?</\1>', ' ', html, flags=re.I | re.S)
-                    text = re.sub(r'<[^>]+>', '\n', text)
+                    text = ""
+                if not text_quality_ok(text):
+                    try:
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(html, "lxml")
+                        for tag in soup([
+                            "script", "style", "noscript", "template", "svg", "canvas",
+                            "header", "footer", "nav", "aside", "form",
+                        ]):
+                            tag.decompose()
+                        title = title or (soup.title.get_text(" ", strip=True) if soup.title else "")
+                        main = soup.find("main") or soup.find("article") or soup.body or soup
+                        text = main.get_text("\n", strip=True)
+                    except Exception:
+                        title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.I | re.S)
+                        title = title or (title_match.group(1).strip() if title_match else "")
+                        text = re.sub(r'<(script|style|noscript|template)[^>]*>.*?</\1>', ' ', html, flags=re.I | re.S)
+                        text = re.sub(r'<[^>]+>', '\n', text)
                 # 仅压缩行内空白, 保留换行结构, 以便后续按行清洗 / 保留段落
                 text = re.sub(r'[ \t]+', ' ', text)
                 text = re.sub(r'\n[ \t]+', '\n', text)
@@ -1005,15 +1244,44 @@ class ContentExtractor:
         except Exception as e:
             return {"url": url, "markdown": "", "method_used": method, "error": str(e)}
 
-    def batch_extract(self, urls: list, method="auto") -> list:
-        """并行批量提取多个 URL 内容"""
+    def batch_extract(self, urls: list, method="auto",
+                      max_urls=None, concurrency=None, timeout_s=None) -> list:
+        """并行批量提取多个 URL 内容。
+
+        max_urls / concurrency / timeout_s 留空时取环境预算
+        (EXTRACT_MAX_URLS / EXTRACT_CONCURRENCY / EXTRACT_TIMEOUT_S)。
+        单个 URL 抽取超时不阻塞整体: 降级为 timeout 占位(上层会回退到 snippet);
+        返回顺序与输入对齐。总等待以 2×timeout_s 为软上限, 避免个别慢页拖垮全局。
+        """
+        import time as _time
         from concurrent.futures import ThreadPoolExecutor
 
-        urls = [clean_url(u) for u in urls[:8] if clean_url(u)]
+        cap = max_urls or EXTRACT_MAX_URLS
+        workers = concurrency or EXTRACT_CONCURRENCY
+        per_timeout = timeout_s or EXTRACT_TIMEOUT_S
+        urls = [clean_url(u) for u in urls[:cap] if clean_url(u)]
         if not urls:
             return []
-        with ThreadPoolExecutor(max_workers=min(6, len(urls))) as ex:
-            return list(ex.map(lambda u: self.extract(u, method), urls))
+
+        def _timeout_result(u):
+            return {"url": u, "markdown": "", "title": "", "method_used": "timeout",
+                    "error": f"抽取超时(>{per_timeout}s), 已降级"}
+
+        ex = ThreadPoolExecutor(max_workers=min(workers, len(urls)))
+        try:
+            futures = [ex.submit(self.extract, u, method) for u in urls]
+            deadline = _time.monotonic() + per_timeout * 2  # 全局软预算
+            out = []
+            for u, fut in zip(urls, futures):
+                remaining = max(0.1, deadline - _time.monotonic())
+                try:
+                    out.append(fut.result(timeout=remaining))
+                except Exception:
+                    out.append(_timeout_result(u))
+            return out
+        finally:
+            # 不在退出时 join 慢线程(它们各自带 REQUEST_TIMEOUT, 会自行收尾)
+            ex.shutdown(wait=False, cancel_futures=True)
 
 
 class SiteMapper:
@@ -1064,7 +1332,7 @@ class SiteMapper:
 
     def _sitemap_links(self, base, max_links=50):
         sitemap_url = urlunparse((base.scheme, base.netloc, "/sitemap.xml", "", "", ""))
-        r = self.session.get(sitemap_url, timeout=REQUEST_TIMEOUT)
+        r = safe_get(self.session, sitemap_url)  # 逐跳校验重定向, 防 SSRF
         if r.status_code >= 400:
             return []
         locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", r.text, flags=re.I)
@@ -1076,7 +1344,7 @@ class SiteMapper:
     def _page_links(self, url, base, max_links=50, same_domain=True):
         from bs4 import BeautifulSoup
 
-        r = self.session.get(url, timeout=REQUEST_TIMEOUT)
+        r = safe_get(self.session, url)  # 逐跳校验重定向, 防 SSRF
         r.raise_for_status()
         if not r.encoding or r.encoding.lower() in {"iso-8859-1", "latin-1"}:
             r.encoding = r.apparent_encoding or "utf-8"
@@ -1097,6 +1365,198 @@ class SiteMapper:
             if len(links) >= max_links:
                 break
         return links
+
+
+# ================================================================
+# 递归深抓 (web_crawl) — 沿链接 BFS/best-first 抓多级正文
+# ================================================================
+
+# 深抓护栏(硬上限, 不信任入参)
+CRAWL_MAX_DEPTH_CAP = 6
+CRAWL_MAX_PAGES_CAP = 120
+CRAWL_PER_LEVEL_CAP = int(os.environ.get("CRAWL_PER_LEVEL_CAP", "40"))
+CRAWL_TIME_BUDGET_S = int(os.environ.get("CRAWL_TIME_BUDGET_S", "45"))
+CRAWL_MAX_BYTES = int(os.environ.get("CRAWL_MAX_BYTES", str(8 * 1024 * 1024)))
+
+
+class DeepCrawler:
+    """递归深抓: 从一个 URL 出发, 沿链接 BFS/best-first 抓到 N 级正文。
+
+    与 web_map 的边界: web_map 只发现单层链接(快, 探路, 不抓正文); web_crawl 沿链接
+    多层抓正文(慢, 深入)。典型用法: 先 web_map 看站点结构, 再 web_crawl 深抓需要的子树。
+
+    双路径: 装了 crawl4ai 用其 BFSDeepCrawlStrategy(JS 渲染更强); 未装则纯 Python BFS 兜底
+    (复用 SiteMapper 链接发现 + ContentExtractor 抽正文 + url_is_safe SSRF 防护), 不依赖 crawl4ai。
+    护栏: 深度/页数硬上限 + 每级上限 + 时间预算看门狗 + 累计字节闸门; 每个入队 URL 必过
+    url_is_safe(递归会顺外链穿内网, 必须逐一校验)。
+    """
+
+    def __init__(self, extractor, mapper):
+        self.extractor = extractor
+        self.mapper = mapper
+
+    def _in_scope(self, link, base, scope, include_res, exclude_res):
+        try:
+            p = urlparse(link)
+        except Exception:
+            return False
+        if p.scheme not in ("http", "https") or not url_is_safe(link):
+            return False  # SSRF: 每个入队 URL 都要过校验
+        host = p.netloc.lower().removeprefix("www.")
+        base_host = base.netloc.lower().removeprefix("www.")
+        if scope == "same-domain" and host != base_host:
+            return False
+        if scope == "path-prefix" and (host != base_host or not p.path.startswith(base.path or "/")):
+            return False
+        if exclude_res and any(r.search(link) for r in exclude_res):
+            return False
+        if include_res and not any(r.search(link) for r in include_res):
+            return False
+        return True
+
+    def crawl(self, url, max_depth=2, max_pages=30, scope="same-domain",
+              include=None, exclude=None, concurrency=4, relevance="",
+              return_markdown=True, time_budget_s=None) -> dict:
+        url = clean_url(url)
+        base = urlparse(url)
+        out = {"url": url, "max_depth": None, "scope": scope, "pages": [], "total": 0,
+               "truncated": False, "truncated_reason": None, "error": None}
+        if not base.scheme or not base.netloc:
+            out["error"] = "URL 无效"
+            return out
+        if not url_is_safe(url):
+            out["error"] = "URL 指向私网/环回地址, 已按 SSRF 防护拒绝(设 AGENT_SEARCH_ALLOW_PRIVATE=1 可放开)"
+            return out
+
+        max_depth = max(0, min(int(max_depth), CRAWL_MAX_DEPTH_CAP))
+        max_pages = max(1, min(int(max_pages), CRAWL_MAX_PAGES_CAP))
+        out["max_depth"] = max_depth
+        deadline = time.time() + (time_budget_s or CRAWL_TIME_BUDGET_S)
+        include_res = [re.compile(p, re.I) for p in (include or []) if p]
+        exclude_res = [re.compile(p, re.I) for p in (exclude or []) if p]
+        terms = query_terms(relevance) if relevance else []
+
+        # 优先 crawl4ai(若已装且未失败); 任何异常/未装 → 回退纯 Python BFS
+        try:
+            import crawl4ai  # noqa: F401
+            res = self._crawl4ai(url, base, max_depth, max_pages, scope, include_res,
+                                 exclude_res, terms, return_markdown, deadline, out)
+            if res is not None:
+                return res
+        except ImportError:
+            pass
+        except Exception:
+            pass
+        return self._bfs(url, base, max_depth, max_pages, scope, include_res, exclude_res,
+                         concurrency, terms, return_markdown, deadline, out)
+
+    def _score(self, link, terms):
+        if not terms:
+            return 0.0
+        low = (link or "").lower()
+        return float(sum(low.count(t) for t in terms))
+
+    def _bfs(self, seed, base, max_depth, max_pages, scope, include_res, exclude_res,
+             concurrency, terms, return_markdown, deadline, out):
+        from concurrent.futures import ThreadPoolExecutor
+
+        visited = {canonical_url(seed)}
+        frontier = [(seed, 0)]
+        pages, total_bytes = [], 0
+        truncated, reason = False, None
+        workers = min(max(1, int(concurrency)), 8)
+
+        while frontier and len(pages) < max_pages:
+            if time.time() > deadline:
+                truncated, reason = True, "time_budget"
+                break
+            if terms:                                  # best-first: URL 相关性优先
+                frontier.sort(key=lambda x: -self._score(x[0], terms))
+            batch, frontier = frontier[:workers], frontier[workers:]
+            with ThreadPoolExecutor(max_workers=min(workers, len(batch))) as ex:
+                fetched = list(ex.map(lambda ud: (ud, self.extractor.extract(ud[0])), batch))
+
+            for (u, depth), ext in fetched:
+                if len(pages) >= max_pages:
+                    truncated, reason = True, "max_pages"
+                    break
+                md = ext.get("markdown", "") if return_markdown else ""
+                pages.append({"url": ext.get("url", u), "depth": depth,
+                              "title": ext.get("title", ""), "method": ext.get("method_used", ""),
+                              "score": round(self._score(u, terms), 2),
+                              "markdown": md})
+                if return_markdown and md:
+                    total_bytes += len(md.encode("utf-8", "ignore"))
+                    if total_bytes > CRAWL_MAX_BYTES:
+                        truncated, reason = True, "byte_budget"
+                        break
+                if depth < max_depth:                  # 发现下层链接
+                    try:
+                        links = self.mapper._page_links(u, base, max_links=CRAWL_PER_LEVEL_CAP,
+                                                        same_domain=(scope != "any"))
+                    except Exception:
+                        links = []
+                    for item in links:
+                        link = item.get("url", "")
+                        key = canonical_url(link)
+                        if key in visited or not self._in_scope(link, base, scope, include_res, exclude_res):
+                            continue
+                        visited.add(key)
+                        frontier.append((link, depth + 1))
+            if reason:
+                break
+
+        if not reason and frontier and len(pages) >= max_pages:
+            truncated, reason = True, "max_pages"
+        out.update({"pages": pages, "total": len(pages),
+                    "truncated": truncated, "truncated_reason": reason})
+        return out
+
+    def _crawl4ai(self, seed, base, max_depth, max_pages, scope, include_res, exclude_res,
+                  terms, return_markdown, deadline, out):
+        """crawl4ai 深抓路径(若已装)。任何异常返回 None 让上层回退纯 Python BFS。"""
+        import asyncio
+        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+        from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+
+        strategy = BFSDeepCrawlStrategy(max_depth=max_depth, max_pages=max_pages,
+                                        include_external=(scope == "any"))
+        cfg = CrawlerRunConfig(deep_crawl_strategy=strategy, stream=False)
+
+        async def _run():
+            pages = []
+            async with AsyncWebCrawler() as crawler:
+                results = await crawler.arun(url=seed, config=cfg)  # 深抓模式返回 list
+                for r in (results or []):
+                    try:
+                        link = getattr(r, "url", "") or ""
+                        if link != seed and not self._in_scope(link, base, scope, include_res, exclude_res):
+                            continue
+                        md_obj = getattr(r, "markdown", None)
+                        md = (getattr(md_obj, "fit_markdown", None) or getattr(md_obj, "raw_markdown", None)
+                              or (md_obj if isinstance(md_obj, str) else "") or "") if return_markdown else ""
+                        meta = getattr(r, "metadata", None) or {}
+                        pages.append({"url": link, "depth": (meta.get("depth", 0) if isinstance(meta, dict) else 0),
+                                      "title": (meta.get("title", "") if isinstance(meta, dict) else ""),
+                                      "method": "crawl4ai", "score": round(self._score(link, terms), 2),
+                                      "markdown": md})
+                    except Exception:
+                        continue  # 单页失败(含 #1437 max_pages 触顶) 跳过
+            return pages
+
+        try:
+            pages = asyncio.run(_run())
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                pages = loop.run_until_complete(_run())
+            finally:
+                loop.close()
+        pages = pages[:max_pages]
+        out.update({"pages": pages, "total": len(pages),
+                    "truncated": len(pages) >= max_pages, "truncated_reason":
+                    "max_pages" if len(pages) >= max_pages else None})
+        return out
 
 
 # ================================================================
@@ -1398,6 +1858,165 @@ class DeepSeekClient:
 
 
 # ================================================================
+# 通用方案对比 (compare_solutions) — 任意方案拉齐成对比矩阵, 每格带来源可追溯
+# ================================================================
+
+SPDX_LICENSES = ("AGPL-3.0", "GPL-3.0", "GPL-2.0", "LGPL-3.0", "MPL-2.0", "Apache-2.0",
+                 "BSD-3-Clause", "BSD-2-Clause", "MIT", "ISC", "Unlicense", "EPL-2.0")
+
+
+class SolutionComparator:
+    """通用方案对比: 把任意候选(开源库/SaaS/框架/做法)拉齐成对比矩阵, 每格带来源+证据可追溯。
+
+    与 github_compare 的边界: 纯 GitHub 仓库选型且要 OpenSSF 健康分用 github_compare(更快、更准);
+    含非 GitHub 方案 / 要定价 / 要适用场景, 用 compare_solutions(更全, 字段级引用)。
+    复用: github.repo_facts(一手事实)、_multi_search(发现/定位官方页)、result_rank_score(选官方页)、
+    batch_extract(抽正文)、PRICE_INTENT_RE/_relevant_excerpt(规则抽字段)、DeepSeek(可选 LLM 补软维度)。
+    """
+
+    DEFAULT_DIMS = ["最新版本", "定价", "许可", "维护活跃度", "性能", "生态/集成", "适用场景"]
+
+    def __init__(self, engine):
+        self.e = engine
+
+    def compare(self, topic="", candidates=None, dimensions=None, num_sources=3,
+                use_llm=False, deep=False) -> dict:
+        dims = [d for d in (dimensions or self.DEFAULT_DIMS) if d]
+        cands = list(dict.fromkeys(c.strip() for c in (candidates or []) if c and c.strip()))
+        if not cands and topic:
+            cands = self._discover(topic)
+        if not cands:
+            return {"topic": topic, "dimensions": dims, "candidates": [], "matrix": {},
+                    "note": "请提供 candidates, 或给可发现候选的 topic", "error": "无候选"}
+        cands = cands[:8]
+
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(6, len(cands))) as ex:
+            cand_results = list(ex.map(lambda c: self._one(c, dims, use_llm), cands))
+
+        matrix = {}
+        for dim in dims:
+            matrix[dim] = [{"candidate": cr["name"], "value": (cr["fields"].get(dim) or {}).get("value"),
+                            "source_url": (cr["fields"].get(dim) or {}).get("source_url"),
+                            "confidence": (cr["fields"].get(dim) or {}).get("confidence")}
+                           for cr in cand_results]
+        return {"topic": topic, "dimensions": dims, "candidates": cand_results, "matrix": matrix,
+                "note": "一手事实(GitHub API/OpenSSF)+规则/LLM 抽取; 每格带来源可追溯; 仅供选型参考, 不替你下结论",
+                "error": None}
+
+    def _discover(self, topic):
+        merged, _e, _n = self.e._multi_search(
+            [topic] + [p[0] for p in plan_queries(topic, "compare")])
+        names, skip = [], ("github", "youtube", "reddit", "medium", "stackoverflow", "zhihu", "csdn")
+        for r in merged[:12]:
+            host = urlparse(r.url).netloc.lower().removeprefix("www.")
+            part = host.split(".")[0] if host else ""
+            if part and part not in skip and part not in names:
+                names.append(part)
+        return names[:5]
+
+    def _one(self, name, dims, use_llm):
+        fields = {d: {"value": None, "source_url": None, "excerpt": None, "confidence": None} for d in dims}
+        out = {"name": name, "official_url": None, "repo": None, "fields": fields, "flags": []}
+
+        repo = normalize_repo_slug(name) if "/" in name else None
+        facts = None
+        if repo and len(repo.split("/")) == 2:
+            facts = self.e.github.repo_facts(repo)
+            if facts and not facts.get("error"):
+                out["repo"] = facts.get("repo")
+                out["official_url"] = facts.get("homepage") or f"https://github.com/{facts.get('repo')}"
+                out["flags"] = facts.get("flags", [])
+                self._fill_from_facts(fields, facts, f"https://github.com/{facts.get('repo')}")
+            else:
+                facts = None
+
+        # 非 GitHub, 或 GitHub 没覆盖的维度(定价/性能/适用场景) → 网页补充
+        if facts is None or any(fields[d]["value"] is None for d in dims):
+            try:
+                self._fill_from_web(name, fields, dims, use_llm, out)
+            except Exception:
+                pass
+        return out
+
+    def _fill_from_facts(self, fields, facts, src):
+        def setf(dim, val, conf="official"):
+            if dim in fields and val and fields[dim]["value"] is None:
+                fields[dim].update({"value": str(val), "source_url": src, "confidence": conf})
+        setf("最新版本", facts.get("latest_release"))
+        setf("许可", facts.get("license"))
+        dsc = facts.get("days_since_commit")
+        if dsc is not None:
+            v = f"近{dsc}天有提交" if dsc <= 365 else f"近{dsc}天无提交"
+            sc = facts.get("scorecard_overall")
+            if sc is not None:
+                v += f" / OpenSSF {sc}"
+            setf("维护活跃度", v)
+
+    def _fill_from_web(self, name, fields, dims, use_llm, out):
+        merged, _e, _n = self.e._multi_search([f"{name} official", f"{name} pricing documentation"])
+        if not merged:
+            return
+        ranked = self.e._result_dicts(name, merged, top_k=4, rerank=True)
+        urls = [r["url"] for r in ranked]
+        if not out["official_url"] and urls:
+            out["official_url"] = urls[0]
+        exts = self.e.extractor.batch_extract(urls[:3], max_urls=3)
+        body, body_url = "", out["official_url"]
+        for u, ext in zip(urls[:3], exts):
+            md = ext.get("markdown", "")
+            if md and text_quality_ok(md):
+                body, body_url = md, u
+                break
+        if not body:
+            return
+        self._rule_extract(fields, body, body_url, name)
+        if use_llm and self.e.llm.is_configured():
+            self._llm_extract(fields, body, body_url, name, dims)
+
+    def _rule_extract(self, fields, body, url, name):
+        excerpt = re.sub(r"\s+", " ", self.e.llm._relevant_excerpt(name, body, max_chars=280)).strip()[:280]
+
+        def setf(dim, val, conf="secondary"):
+            if dim in fields and val and fields[dim]["value"] is None:
+                fields[dim].update({"value": val[:80], "source_url": url, "excerpt": excerpt, "confidence": conf})
+
+        if PRICE_INTENT_RE.search(body):
+            m = re.search(r"(免费|free|\$\s?\d[\d,.]*\s*(?:/|per)?\s*(?:month|mo|year|yr|seat|user|月|年)?|\d+\s*元)", body, re.I)
+            if m:
+                setf("定价", m.group(0))
+        m = re.search(r"\bv(?:ersion)?\.?\s*(\d+\.\d+(?:\.\d+)?)\b|\b(\d+\.\d+\.\d+)\b", body, re.I)
+        if m:
+            setf("最新版本", m.group(1) or m.group(2))
+        for lic in SPDX_LICENSES:
+            if re.search(re.escape(lic), body, re.I):
+                setf("许可", lic)
+                break
+
+    def _llm_extract(self, fields, body, url, name, dims):
+        excerpt = re.sub(r"\s+", " ", self.e.llm._relevant_excerpt(name, body, max_chars=2000)).strip()
+        sys_p = ("你从资料中抽取某方案的事实, 输出一个 JSON 对象, 键为给定维度, 值为简短中文事实或 null。"
+                 "严格不编造, 资料没提到就填 null, 不要任何解释、不要代码块外的文字。")
+        user_p = f"方案: {name}\n维度: {dims}\n资料:\n{excerpt}"
+        out = self.e.llm.chat([{"role": "system", "content": sys_p}, {"role": "user", "content": user_p}],
+                              temperature=0.0, max_tokens=400)
+        if not isinstance(out, dict) or out.get("error"):
+            return
+        m = re.search(r"\{.*\}", out.get("content", ""), re.S)
+        if not m:
+            return
+        try:
+            data = json.loads(m.group(0))
+        except Exception:
+            return
+        for dim in dims:
+            v = data.get(dim)
+            if v and isinstance(v, (str, int, float)) and fields.get(dim, {}).get("value") is None:
+                fields[dim].update({"value": str(v)[:120], "source_url": url,
+                                    "excerpt": excerpt[:280], "confidence": "llm"})
+
+
+# ================================================================
 # 主搜索入口
 # ================================================================
 
@@ -1411,8 +2030,10 @@ class AgentSearch:
         self.flaresolverr = FlareSolverrEngine()
         self.extractor = ContentExtractor(self.cache)
         self.mapper = SiteMapper()
+        self.deep_crawler = DeepCrawler(self.extractor, self.mapper)
         self.llm = DeepSeekClient()
         self.github = GitHubEngine()
+        self.comparator = SolutionComparator(self)
         self._prefer_searxng = False
 
         # 检测后端可用性
@@ -1430,10 +2051,14 @@ class AgentSearch:
             sys.stderr.write(f"[*] FlareSolverr: 离线 (CAPTCHA 引擎不可用)\n")
         sys.stderr.write(f"[*] Jina Reader: 可用 (r.jina.ai 内容提取)\n\n")
 
-    def _result_dicts(self, query: str, results: list[SearchResult], top_k: int, rerank=True) -> list[dict]:
+    def _result_dicts(self, query: str, results: list[SearchResult], top_k: int, rerank=True,
+                      weight_map=None) -> list[dict]:
         ranked = []
         for i, r in enumerate(results):
             rank_score = result_rank_score(query, r, i) if rerank else float(r.score or 0.0)
+            # plan fan-out: 角度子查询的结果按权重轻度下压(只在重排时生效)
+            if rerank and weight_map:
+                rank_score *= weight_map.get(canonical_url(r.url), 1.0)
             ranked.append((rank_score, i, r))
         if rerank:
             ranked.sort(key=lambda x: (-x[0], x[1]))
@@ -1444,9 +2069,63 @@ class AgentSearch:
             out.append(item)
         return out
 
+    def _multi_search(self, queries, engines=None, *, time_range=None, categories=None,
+                      language=None, safe_search=None, max_workers=None, group=False):
+        """并发搜多个(子)查询, 每个子查询独立缓存, 合并去重(canonical_url)。
+
+        用于"找方案/对比"场景: 把多角度子查询一次并发打出去, 替代串行扩展。
+        返回 (results, primary_error, n_failed):
+          results — group=False(默认): 去重后的 SearchResult 列表(按 queries 顺序);
+                    group=True: dict{query: [SearchResult,...]}(保留来源, 供按子查询加权);
+          primary_error — 第一个查询的 error;
+          n_failed — 失败子查询数(供诊断, 不再静默吞掉, 修 BUG-6)。
+        子查询缓存走 cache.get_search/set_search(带 subq 标记, 与顶层 query 缓存隔离);
+        评测桩会把 engine.cache 置空, 故 eval 下自动失效、不影响"每轮新鲜重跑"。
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        queries = list(dict.fromkeys(q for q in queries if q))
+        if not queries:
+            return ({} if group else []), None, 0
+        sub_opts = {"subq": True, "time_range": time_range,
+                    "categories": ",".join(categories) if categories else None,
+                    "language": language, "safe_search": safe_search}
+
+        def _one(q):
+            cached = self.cache.get_search(q, engines, **sub_opts)
+            if cached is not None:
+                return q, [SearchResult(**d) for d in cached.get("results", [])], None
+            resp = self.searxng.search(q, engines, time_range=time_range, categories=categories,
+                                       language=language, safe_search=safe_search)
+            if not resp.error:
+                self.cache.set_search(q, {"results": [r.to_dict() for r in resp.results]},
+                                      engines, **sub_opts)
+            return q, resp.results, resp.error
+
+        workers = max_workers or int(os.environ.get("MULTI_SEARCH_WORKERS", "4"))
+        by_query = {}
+        with ThreadPoolExecutor(max_workers=min(workers, len(queries))) as ex:
+            for q, results, err in ex.map(_one, queries):
+                by_query[q] = (results, err)
+
+        primary_error = by_query[queries[0]][1]
+        n_failed = sum(1 for _, e in by_query.values() if e)
+        if group:
+            return {q: by_query.get(q, ([], None))[0] for q in queries}, primary_error, n_failed
+
+        merged, seen = [], set()
+        for q in queries:
+            for r in by_query.get(q, ([], None))[0]:
+                key = canonical_url(r.url)
+                if r.url and key not in seen:
+                    seen.add(key)
+                    merged.append(r)
+        return merged, primary_error, n_failed
+
     def search(self, query: str, engines=None, top_k=10, extract=False, deep=False,
                use_flaresolverr=False, time_range=None, categories=None,
-               language=None, safe_search=None, rerank=True, auto_rewrite=True) -> dict:
+               language=None, safe_search=None, rerank=True, auto_rewrite=True,
+               expand_mode="auto") -> dict:
         """搜索入口
 
         Args:
@@ -1459,12 +2138,16 @@ class AgentSearch:
             categories: None 或 ["general", "news", "images"]
             language: 语言代码
             safe_search: None / 0 / 1 / 2
+            expand_mode: off / auto / compare —— 多查询扩展策略。auto(默认)命中对比意图
+                         才多角度扇出; compare 强制扇出; off 不扩展。
 
         Returns:
             dict: {query, results, source, elapsed_ms, engines_used, ...}
         """
         t0 = time.time()
         backend = "flaresolverr" if use_flaresolverr else ("searxng" if self._prefer_searxng else "web")
+        # auto_rewrite=False 时实际不扩展, 缓存键按 off 记(顺带覆盖 BUG-3 的 auto_rewrite 维度)
+        eff_expand = expand_mode if auto_rewrite else "off"
         cache_options = {
             "top_k": top_k,
             "backend": backend,
@@ -1473,7 +2156,9 @@ class AgentSearch:
             "language": language,
             "safe_search": safe_search,
             "rerank": bool(rerank),
+            "expand_mode": eff_expand,
         }
+        plan_weight_map = None
 
         # 1. 检查缓存
         cached = self.cache.get_search(query, engines, **cache_options)
@@ -1501,23 +2186,92 @@ class AgentSearch:
                 language=language,
                 safe_search=safe_search,
             )
-            # 多查询扩展: 对文档/价格意图的查询追加通用增强查询, 合并候选后统一重排
-            if auto_rewrite and not resp.error:
-                for aug_q in query_expansions(query):
-                    aug = self.searxng.search(
-                        aug_q, engines, time_range=time_range, categories=categories,
-                        language=language, safe_search=safe_search,
-                    )
-                    if not aug.error and aug.results:
-                        resp.results.extend(aug.results)
-                seen, deduped = set(), []
-                for r in resp.results:
-                    key = canonical_url(r.url)
-                    if r.url and key not in seen:
-                        seen.add(key)
-                        deduped.append(r)
-                resp.results = deduped
-                resp.total = len(deduped)
+            # 多查询扩展: plan_queries 把"对比/选型"意图扇出成多角度子查询(并发, 替代串行,
+            # 修 BUG-6 不静默吞错), 合并进主结果后按子查询权重轻度下压角度结果再统一重排。
+            if auto_rewrite and not resp.error and eff_expand != "off":
+                plan = plan_queries(query, eff_expand)
+                if plan:
+                    by_q, _perr, n_failed = self._multi_search(
+                        [p[0] for p in plan], engines, time_range=time_range,
+                        categories=categories, language=language, safe_search=safe_search,
+                        group=True)
+                    weight_of = {p[0]: p[1] for p in plan}
+                    merged, seen, plan_weight_map = [], set(), {}
+                    for r in resp.results:           # 原查询结果优先, 权重 1.0
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                            plan_weight_map[key] = 1.0
+                    for subq, results in by_q.items():   # 角度子查询结果, 同 url 取最大权重
+                        w = weight_of.get(subq, 0.7)
+                        for r in results:
+                            if not r.url:
+                                continue
+                            key = canonical_url(r.url)
+                            if key in seen:
+                                plan_weight_map[key] = max(plan_weight_map.get(key, 0.0), w)
+                                continue
+                            seen.add(key)
+                            merged.append(r)
+                            plan_weight_map[key] = w
+                    resp.results = merged
+                    resp.total = len(merged)
+                    if n_failed:
+                        sys.stderr.write(f"[*] 扩展查询 {n_failed} 条失败(已忽略)\n")
+
+            # 容错 L0: 结果仍稀少且引擎给了拼写纠正 → 用纠正词重搜并入(合并进原 query, 缓存键不变)
+            if (auto_rewrite and not resp.error and resp.corrections
+                    and len(resp.results) < FUZZY_MIN_RESULTS):
+                corr = resp.corrections[0]
+                if corr and corr.lower() != query.strip().lower():
+                    extra, _e, _n = self._multi_search(
+                        [corr], engines, time_range=time_range, categories=categories,
+                        language=language, safe_search=safe_search)
+                    merged, seen = [], set()
+                    for r in list(resp.results) + extra:
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                    resp.results = merged
+                    resp.total = len(merged)
+                    sys.stderr.write(f"[*] 容错: 结果稀少, 用纠正词重搜 '{corr}'\n")
+
+            # 容错 L1: L0 后仍稀少 → 本地编辑距离纠错(rapidfuzz, 缺失则空), 纠正变体重搜并入
+            if (auto_rewrite and not resp.error and len(resp.results) < FUZZY_MIN_RESULTS):
+                variants = fuzzy_correct_query(query, build_correction_vocab(self.cache, resp.results))
+                if variants:
+                    extra, _e, _n = self._multi_search(
+                        variants, engines, time_range=time_range, categories=categories,
+                        language=language, safe_search=safe_search)
+                    merged, seen = [], set()
+                    for r in list(resp.results) + extra:
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                    resp.results = merged
+                    resp.total = len(merged)
+                    sys.stderr.write(f"[*] 容错: 本地纠错重搜 {variants}\n")
+
+            # 容错 L3: L1 后仍 0 结果 且配了 LLM → 让 LLM 只纠拼写(不改语义), 重搜并入
+            if (auto_rewrite and not resp.error and not resp.results
+                    and self.llm.is_configured()):
+                variants = self._llm_spelling_rewrite(query)
+                if variants:
+                    extra, _e, _n = self._multi_search(
+                        variants, engines, time_range=time_range, categories=categories,
+                        language=language, safe_search=safe_search)
+                    seen, merged = set(), []
+                    for r in extra:
+                        key = canonical_url(r.url)
+                        if r.url and key not in seen:
+                            seen.add(key)
+                            merged.append(r)
+                    resp.results = merged
+                    resp.total = len(merged)
+                    sys.stderr.write(f"[*] 容错: LLM 纠拼写重搜 {variants}\n")
         else:
             resp = self.web_fallback.search(query, top_k)
 
@@ -1529,7 +2283,8 @@ class AgentSearch:
         # 4. 构建返回
         result_dict = {
             "query": query,
-            "results": self._result_dicts(query, resp.results, top_k, rerank=rerank),
+            "results": self._result_dicts(query, resp.results, top_k, rerank=rerank,
+                                          weight_map=plan_weight_map),
             "total": min(len(resp.results), top_k),
             "source": resp.source,
             "error": resp.error,
@@ -1552,6 +2307,22 @@ class AgentSearch:
 
         return result_dict
 
+    def _llm_spelling_rewrite(self, query: str) -> list[str]:
+        """容错 L3: 用 LLM 只纠明显拼写错误(不改语义), 返回至多 2 个候选。无 key/失败→[]。"""
+        if not self.llm.is_configured():
+            return []
+        msgs = [
+            {"role": "system", "content":
+             "你是搜索查询纠错器。只纠正明显的拼写错误, 不改变语义、不增删词、不翻译。"
+             "每行输出一个候选, 最多 2 个, 不要任何解释。若原查询没有拼写错误, 原样输出一行。"},
+            {"role": "user", "content": query},
+        ]
+        out = self.llm.chat(msgs, temperature=0.0, max_tokens=60)
+        if not isinstance(out, dict) or out.get("error"):
+            return []
+        cands = [ln.strip() for ln in (out.get("content") or "").splitlines() if ln.strip()]
+        return [c for c in cands[:2] if c.lower() != query.strip().lower()]
+
     def stats(self) -> dict:
         """缓存统计"""
         return self.cache.stats()
@@ -1569,6 +2340,18 @@ class AgentSearch:
         """发现站点链接，用于先 map 再 extract/crawl。"""
         return self.mapper.map(url, max_links=max_links, same_domain=same_domain)
 
+    def crawl(self, url: str, max_depth=2, max_pages=30, scope="same-domain",
+              include=None, exclude=None, concurrency=4, relevance="",
+              return_markdown=True) -> dict:
+        """递归深抓: 从 url 出发沿链接 BFS/best-first 抓到 max_depth 级正文(2-6 级)。
+
+        先 web_map 探路(快, 单层, 只链接)再 web_crawl 深抓(慢, 多层, 抓正文)。
+        """
+        return self.deep_crawler.crawl(
+            url, max_depth=max_depth, max_pages=max_pages, scope=scope,
+            include=include, exclude=exclude, concurrency=concurrency,
+            relevance=relevance, return_markdown=return_markdown)
+
     def github_search(self, query: str, kind="repos", limit=5) -> dict:
         """搜索 GitHub（仓库/代码/issue/PR），走本机 gh CLI"""
         return self.github.search(query, kind=kind, limit=limit)
@@ -1576,6 +2359,13 @@ class AgentSearch:
     def github_compare(self, repos=None, query=None, limit=5) -> dict:
         """技术选型对比：拉齐多个 GitHub 项目的一手事实 + 成熟度信号，不下结论。"""
         return self.github.compare(repos=repos, query=query, limit=limit)
+
+    def compare_solutions(self, topic="", candidates=None, dimensions=None,
+                          num_sources=3, use_llm=False, deep=False) -> dict:
+        """通用方案对比矩阵：任意候选(开源库/SaaS/框架)拉齐成对比矩阵，每格带来源可追溯。"""
+        return self.comparator.compare(
+            topic=topic, candidates=candidates, dimensions=dimensions,
+            num_sources=num_sources, use_llm=use_llm, deep=deep)
 
     def answer(self, query: str, engines=None, num_sources=4, deep=False,
                use_flaresolverr=False, time_range=None, categories=None,
@@ -1613,10 +2403,13 @@ class AgentSearch:
             return {"query": query, "error": "没有搜索到任何结果"}
 
         # 2. 抓正文
+        # candidates 已由 search() 按 result_rank_score 重排, 截断即保留高分候选;
+        # 抽取预算与 num_sources 挂钩(留 2x 缓冲), 避免旧实现写死 8 条凑不够来源。
         method = "crawl4ai" if deep else "auto"
         sources = []
         urls = [clean_url(r["url"]) for r in candidates]
-        extracted = self.extractor.batch_extract(urls, method=method)
+        extracted = self.extractor.batch_extract(
+            urls, method=method, max_urls=max(num_sources * 2, 8))
         for r, ext in zip(candidates, extracted):
             if len(sources) >= num_sources:
                 break
@@ -1687,6 +2480,9 @@ def main():
     parser.add_argument("--flaresolverr", "-f", action="store_true", help="用 FlareSolverr 绕过 CAPTCHA 搜 Google/Bing/DDG")
     parser.add_argument("--url", "-u", help="直接提取指定 URL 内容")
     parser.add_argument("--map", dest="map_url", help="发现指定站点的内部链接")
+    parser.add_argument("--crawl", dest="crawl_url", help="从该 URL 递归深抓 2~6 级正文")
+    parser.add_argument("--max-depth", type=int, default=2, help="--crawl 深度(起始页外层数, 1~6)")
+    parser.add_argument("--max-pages", type=int, default=20, help="--crawl 总页数上限")
     parser.add_argument("--time-range", choices=["day", "month", "year"], help="SearXNG 时间范围过滤")
     parser.add_argument("--categories", help="SearXNG 分类，逗号分隔: general,news,images")
     parser.add_argument("--language", help="SearXNG 语言代码，如 zh-CN / en-US")
@@ -1727,6 +2523,21 @@ def main():
             for i, link in enumerate(result.get("links", []), 1):
                 print(f"  [{i:2d}] {link.get('title') or '(无标题)'}")
                 print(f"       {link['url']}")
+        return
+
+    if args.crawl_url:
+        result = search.crawl(args.crawl_url, max_depth=args.max_depth, max_pages=args.max_pages,
+                              relevance=args.query or "")
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"\n深抓: {result['url']} (depth≤{result.get('max_depth')})")
+            print(f"页数: {result['total']}{' (截断: ' + str(result.get('truncated_reason')) + ')' if result.get('truncated') else ''}")
+            if result.get("error"):
+                print(f"提示: {result['error']}")
+            for i, p in enumerate(result.get("pages", []), 1):
+                print(f"  [{i:2d}] d{p['depth']} {p.get('title') or '(无标题)'}")
+                print(f"       {p['url']}  [{p.get('method')}, {len(p.get('markdown',''))} 字]")
         return
 
     if args.url:

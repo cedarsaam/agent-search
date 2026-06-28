@@ -53,6 +53,7 @@ class SearchReq(BaseModel):
     language: Optional[str] = None
     safe_search: Optional[int] = None
     rerank: bool = True
+    expand_mode: str = "auto"                  # off / auto / compare 多查询扩展策略
 
 
 class AskReq(BaseModel):
@@ -78,6 +79,18 @@ class MapReq(BaseModel):
     same_domain: bool = True
 
 
+class CrawlReq(BaseModel):
+    url: str
+    max_depth: int = 2                  # 起始页之外的层数(2~6 级), 硬上限 6
+    max_pages: int = 30                 # 总页数上限, 硬上限 120
+    scope: str = "same-domain"          # same-domain / path-prefix / any
+    include: Optional[list[str]] = None
+    exclude: Optional[list[str]] = None
+    concurrency: int = 4
+    relevance: str = ""                 # 给了则按 URL 相关性 best-first
+    return_markdown: bool = True
+
+
 class GitHubReq(BaseModel):
     query: str
     kind: str = "repos"          # repos / code / issues / prs
@@ -88,6 +101,15 @@ class GitHubCompareReq(BaseModel):
     repos: Optional[list[str]] = None   # ["owner/name", ...] 或 GitHub URL
     query: Optional[str] = None          # 不给 repos 时按 star 搜 top N 再比
     limit: int = 5
+
+
+class CompareReq(BaseModel):
+    topic: str = ""
+    candidates: Optional[list[str]] = None
+    dimensions: Optional[list[str]] = None
+    num_sources: int = 3
+    use_llm: bool = False
+    deep: bool = False
 
 
 class TavilySearchReq(BaseModel):
@@ -120,7 +142,7 @@ def search(req: SearchReq):
         deep=req.deep, use_flaresolverr=req.use_flaresolverr,
         time_range=req.time_range, categories=req.categories,
         language=req.language, safe_search=req.safe_search,
-        rerank=req.rerank,
+        rerank=req.rerank, expand_mode=req.expand_mode,
     )
 
 
@@ -144,6 +166,16 @@ def map_site(req: MapReq):
     return get_engine().map_site(req.url, max_links=req.max_links, same_domain=req.same_domain)
 
 
+@app.post("/crawl")
+def crawl(req: CrawlReq):
+    """递归深抓 2~6 级正文(web_map 的递归版 + 抓正文)。"""
+    return get_engine().crawl(
+        req.url, max_depth=req.max_depth, max_pages=req.max_pages, scope=req.scope,
+        include=req.include, exclude=req.exclude, concurrency=req.concurrency,
+        relevance=req.relevance, return_markdown=req.return_markdown,
+    )
+
+
 @app.post("/github")
 def github(req: GitHubReq):
     return get_engine().github_search(req.query, kind=req.kind, limit=req.limit)
@@ -153,6 +185,14 @@ def github(req: GitHubReq):
 def github_compare(req: GitHubCompareReq):
     """技术选型对比：GitHub API 一手事实 + OpenSSF Scorecard 健康分，不下结论。"""
     return get_engine().github_compare(repos=req.repos, query=req.query, limit=req.limit)
+
+
+@app.post("/compare")
+def compare_solutions(req: CompareReq):
+    """通用方案对比矩阵：任意候选拉齐成矩阵，每格带来源可追溯(GitHub 候选取一手事实)。"""
+    return get_engine().compare_solutions(
+        topic=req.topic, candidates=req.candidates, dimensions=req.dimensions,
+        num_sources=req.num_sources, use_llm=req.use_llm, deep=req.deep)
 
 
 @app.post("/tavily/search")
