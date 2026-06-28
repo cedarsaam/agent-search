@@ -62,7 +62,7 @@ engines:
     engine: brave
     shortcut: bv
     disabled: false
-    spellcheck: true         # 开启拼写纠错 → 喂给 JSON API 的 corrections[](容错搜索 L0)
+    brave_spellcheck: true   # 开启拼写纠错(brave 引擎参数名是 brave_spellcheck) → JSON API 的 corrections[](容错搜索 L0)
     # Brave Search 自有索引，对中文支持好，不触发 CAPTCHA
 
   - name: startpage
