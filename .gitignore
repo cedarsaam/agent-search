@@ -22,3 +22,6 @@ bench/budget.json
 # ---- OS ----
 .DS_Store
 Thumbs.db
+
+# loop 自驱动跑测的临时产物(账本/逐轮快照), 不入库
+bench/results/loop_*.json
