@@ -516,5 +516,35 @@ class PlanQueriesTest(unittest.TestCase):
         self.assertEqual(plan_queries("X vs Y", "off"), [])
 
 
+class SuggestionCorrectionTest(unittest.TestCase):
+    def setUp(self):
+        try:
+            import rapidfuzz  # noqa: F401
+        except ImportError:
+            self.skipTest("rapidfuzz 未安装(可选依赖)")
+
+    def test_extracts_spelling_fix(self):
+        from search import suggestion_corrections
+        # 拼写纠错(phyton→python): suggestion 头部与 query 高相似 → 采纳为纠正
+        out = suggestion_corrections("phyton tutorial",
+                                     ["python tutorial video", "python tutorial for beginners"])
+        self.assertEqual(out, ["python tutorial"])
+
+    def test_ignores_pure_related_query(self):
+        from search import suggestion_corrections
+        # 正确 query 的相关建议(head==query) → 不采纳, 避免跑题
+        self.assertEqual(suggestion_corrections("python tutorial", ["python tutorial video"]), [])
+
+    def test_rerank_queries_max_scoring(self):
+        # _result_dicts 用 rerank_queries 取 max: 纠正词上下文让 skill 结果分数 >= 仅用 skil
+        from search import AgentSearch, SearchResult
+        s = AgentSearch.__new__(AgentSearch)
+        skill_doc = SearchResult(title="Skills - Claude Code Docs",
+                                 url="https://code.claude.com/docs/skills", snippet="agent skill", score=0.3)
+        out_plain = s._result_dicts("skil", [skill_doc], 1, rerank=True)
+        out_fixed = s._result_dicts("skil", [skill_doc], 1, rerank=True, rerank_queries=["skill"])
+        self.assertGreaterEqual(out_fixed[0]["rank_score"], out_plain[0]["rank_score"])
+
+
 if __name__ == "__main__":
     unittest.main()

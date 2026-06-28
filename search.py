@@ -428,6 +428,31 @@ def fuzzy_correct_query(query: str, vocab: set, max_fix: int = 2) -> list[str]:
     return [variant] if variant.lower() != query.strip().lower() else []
 
 
+def suggestion_corrections(query: str, suggestions, max_n: int = 1) -> list[str]:
+    """从引擎 suggestions 里挑出"确属拼写纠错"的项(与原 query 编辑距离很小), 排除泛相关查询。
+
+    brave 等引擎的拼写纠错落在 suggestions(而非 corrections), 但 suggestions 也含"相关查询"。
+    只取那些"取与 query 等词数前缀后, 与 query 高度相似(疑似 1-2 字拼写差异)"的, 避免跑题。
+    rapidfuzz 未装 → []。
+    """
+    try:
+        from rapidfuzz import fuzz
+    except ImportError:
+        return []
+    q = (query or "").strip().lower()
+    if not q:
+        return []
+    qn = len(q.split())
+    out = []
+    for s in suggestions or []:
+        head = " ".join((s or "").strip().split()[:qn]).lower()
+        if head and head != q and head not in out and fuzz.ratio(head, q) >= 85:
+            out.append(head)
+        if len(out) >= max_n:
+            break
+    return out
+
+
 def plan_queries(query: str, mode: str = "auto") -> list[tuple]:
     """把查询规划成 (子查询, 权重, 标签) 列表(不含原查询)。
 
@@ -2052,10 +2077,16 @@ class AgentSearch:
         sys.stderr.write(f"[*] Jina Reader: 可用 (r.jina.ai 内容提取)\n\n")
 
     def _result_dicts(self, query: str, results: list[SearchResult], top_k: int, rerank=True,
-                      weight_map=None) -> list[dict]:
+                      weight_map=None, rerank_queries=None) -> list[dict]:
+        # 容错: 检测到拼写错误时, 额外以"纠正词"为相关性上下文一并打分取 max,
+        # 让纠正后的结果(如 skil→skill)即便原查询有结果也能浮上来。
+        score_qs = [query] + [q for q in (rerank_queries or []) if q]
         ranked = []
         for i, r in enumerate(results):
-            rank_score = result_rank_score(query, r, i) if rerank else float(r.score or 0.0)
+            if rerank:
+                rank_score = max(result_rank_score(q, r, i) for q in score_qs)
+            else:
+                rank_score = float(r.score or 0.0)
             # plan fan-out: 角度子查询的结果按权重轻度下压(只在重排时生效)
             if rerank and weight_map:
                 rank_score *= weight_map.get(canonical_url(r.url), 1.0)
@@ -2159,6 +2190,7 @@ class AgentSearch:
             "expand_mode": eff_expand,
         }
         plan_weight_map = None
+        typo_variants = []
 
         # 1. 检查缓存
         cached = self.cache.get_search(query, engines, **cache_options)
@@ -2238,22 +2270,26 @@ class AgentSearch:
                     resp.total = len(merged)
                     sys.stderr.write(f"[*] 容错: 结果稀少, 用纠正词重搜 '{corr}'\n")
 
-            # 容错 L1: L0 后仍稀少 → 本地编辑距离纠错(rapidfuzz, 缺失则空), 纠正变体重搜并入
-            if (auto_rewrite and not resp.error and len(resp.results) < FUZZY_MIN_RESULTS):
-                variants = fuzzy_correct_query(query, build_correction_vocab(self.cache, resp.results))
-                if variants:
+            # 容错 L1: 检测查询拼写错误(rapidfuzz 词典 + 引擎 suggestions, 不再只看结果是否稀少)。
+            # 有纠正变体则重搜并入, 并把变体作为重排上下文 → 纠正结果即便原查询已有结果也能浮上来(救 skil→skill)。
+            if auto_rewrite and not resp.error and self._prefer_searxng:
+                vocab = build_correction_vocab(self.cache, resp.results)
+                cand = fuzzy_correct_query(query, vocab) + suggestion_corrections(query, resp.suggestions)
+                typo_variants = [v for v in dict.fromkeys(cand) if v and v.lower() != query.strip().lower()]
+                if typo_variants:
                     extra, _e, _n = self._multi_search(
-                        variants, engines, time_range=time_range, categories=categories,
+                        typo_variants[:2], engines, time_range=time_range, categories=categories,
                         language=language, safe_search=safe_search)
-                    merged, seen = [], set()
-                    for r in list(resp.results) + extra:
-                        key = canonical_url(r.url)
-                        if r.url and key not in seen:
-                            seen.add(key)
-                            merged.append(r)
-                    resp.results = merged
-                    resp.total = len(merged)
-                    sys.stderr.write(f"[*] 容错: 本地纠错重搜 {variants}\n")
+                    if extra:
+                        merged, seen = [], set()
+                        for r in list(resp.results) + extra:
+                            key = canonical_url(r.url)
+                            if r.url and key not in seen:
+                                seen.add(key)
+                                merged.append(r)
+                        resp.results = merged
+                        resp.total = len(merged)
+                        sys.stderr.write(f"[*] 容错: 检测到拼写错误, 纠正重搜 {typo_variants[:2]}\n")
 
             # 容错 L3: L1 后仍 0 结果 且配了 LLM → 让 LLM 只纠拼写(不改语义), 重搜并入
             if (auto_rewrite and not resp.error and not resp.results
@@ -2284,7 +2320,7 @@ class AgentSearch:
         result_dict = {
             "query": query,
             "results": self._result_dicts(query, resp.results, top_k, rerank=rerank,
-                                          weight_map=plan_weight_map),
+                                          weight_map=plan_weight_map, rerank_queries=typo_variants),
             "total": min(len(resp.results), top_k),
             "source": resp.source,
             "error": resp.error,
