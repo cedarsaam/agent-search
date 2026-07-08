@@ -1,7 +1,9 @@
 # 可选增强依赖；基础服务不依赖这些包，安装后会自动启用对应能力（缺失则静默降级，绝不报错）。
 
 # 更强的正文抽取：主内容识别、去导航/广告、保留表格/链接。
-trafilatura>=2.1.0
+# crawl4ai 0.9.x 依赖 lxml 5.x；trafilatura 2.x 需要 lxml 6.x，会冲突。
+# 1.12.x 与 crawl4ai 0.9.x 已验证可共存。
+trafilatura>=1.12.2,<2.0
 
 # 拼写容错搜索 L1/L2：基于编辑距离的查询纠错(skil→skill) + 结果级模糊匹配重排。
 # 装了之后 search 结果稀少时会自动用纠正词重搜，并对近形标题补分；未装则容错只走 L0(引擎 corrections)/L3(LLM)。
@@ -10,6 +12,11 @@ rapidfuzz>=3.0
 # requests 兜底抽取分支的主体识别(按文本密度选正文)。未装则回退现有 bs4 main/article 启发式。
 readability-lxml>=0.8.1
 
+# web_research 报告里 ```vega-lite JSON 块 → 内联 SVG 矢量图。纯 Rust + 内置 V8 运行时,
+# 不需要 Node / 浏览器, pip 即用(wheel ~30MB)。未装则报告保留 ```vega-lite spec, 交由消费端
+# (claude.ai artifact / Jupyter / Vega Editor 等)渲染; mermaid 流程图不受影响。
+vl-convert-python>=1.7,<2
+
 # 可选本地重排器。当前代码先使用轻量规则重排；接入 FlashRank 时可用作二阶段 rerank。
 # flashrank>=0.2.10
 
@@ -17,6 +24,6 @@ readability-lxml>=0.8.1
 #   - web_extract --deep / deep=True / requires_deep: 优先用 crawl4ai 抓 JS 重的单页;
 #   - web_crawl(递归深抓 2~6 级): 装了用 crawl4ai 的 BFSDeepCrawlStrategy, 未装则纯 Python BFS 兜底;
 #   失败或没装一律自动回退, 不影响主流程。
-# 默认不装(会额外下载 Playwright 浏览器, 体积大); 真要 JS 渲染时再:
+# 会额外下载 Playwright 浏览器；安装后还需:
 #   pip install "crawl4ai>=0.9.0" && python -m playwright install chromium
-# crawl4ai>=0.9.0
+crawl4ai>=0.9.0

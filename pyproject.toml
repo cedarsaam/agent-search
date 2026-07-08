@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-extract = ["trafilatura>=2.1"]   # 更强正文抽取 / better extraction
+extract = ["trafilatura>=1.12.2,<2.0"]   # 更强正文抽取 / better extraction
 deep = ["crawl4ai>=0.9"]          # JS 渲染深抓 / JS-rendered deep crawl
 rerank = ["flashrank>=0.2"]       # 可选二阶段重排 / optional rerank
 

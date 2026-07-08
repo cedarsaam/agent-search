@@ -1,0 +1,97 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: agent-searxng
+    volumes:
+      - ./searxng/settings.prod.yml:/etc/searxng/settings.yml:ro
+      - ./searxng/engines/doubao.py:/usr/local/searxng/searx/engines/doubao.py:ro
+      - ./data:/etc/searxng/data:rw
+    environment:
+      SEARXNG_BASE_URL: http://agent-searxng:8080/
+      SEARXNG_SESSION_TIMEOUT: "300"
+      SEARXNG_SECRET: ${SEARXNG_SECRET_KEY:-ultrasecretkey}
+      WEB_SEARCH_API_KEY: ${WEB_SEARCH_API_KEY:-}
+      HTTP_PROXY: http://172.18.0.1:1080
+      HTTPS_PROXY: http://172.18.0.1:1080
+      NO_PROXY: localhost,127.0.0.1,agent-searxng,agent-flaresolverr,agent-search-api,agent-search-mcp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    restart: unless-stopped
+    networks:
+      - homepage
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: agent-flaresolverr
+    environment:
+      LOG_LEVEL: info
+      CAPTCHA_SOLVER: none
+      HTTP_PROXY: http://172.18.0.1:1080
+      HTTPS_PROXY: http://172.18.0.1:1080
+      NO_PROXY: localhost,127.0.0.1,agent-searxng,agent-flaresolverr,agent-search-api,agent-search-mcp
+    restart: unless-stopped
+    networks:
+      - homepage
+
+  api:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: http://172.18.0.1:1080
+        HTTPS_PROXY: http://172.18.0.1:1080
+        NO_PROXY: localhost,127.0.0.1,agent-searxng,agent-flaresolverr,agent-search-api,agent-search-mcp
+    container_name: agent-search-api
+    command: uvicorn server:app --host 0.0.0.0 --port 8077
+    env_file:
+      - .env
+    environment:
+      SEARXNG_URL: http://agent-searxng:8080
+      FLARESOLVERR_URL: http://agent-flaresolverr:8191
+      AGENT_SEARCH_DEFAULT_ENGINES: doubao,github,wikipedia,stackoverflow,google cse
+      HTTP_PROXY: http://172.18.0.1:1080
+      HTTPS_PROXY: http://172.18.0.1:1080
+      NO_PROXY: localhost,127.0.0.1,agent-searxng,agent-flaresolverr,agent-search-api,agent-search-mcp
+    depends_on:
+      - searxng
+      - flaresolverr
+    restart: unless-stopped
+    networks:
+      - homepage
+
+  mcp:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: http://172.18.0.1:1080
+        HTTPS_PROXY: http://172.18.0.1:1080
+        NO_PROXY: localhost,127.0.0.1,agent-searxng,agent-flaresolverr,agent-search-api,agent-search-mcp
+    container_name: agent-search-mcp
+    command: python mcp_server.py
+    env_file:
+      - .env
+    environment:
+      SEARXNG_URL: http://agent-searxng:8080
+      FLARESOLVERR_URL: http://agent-flaresolverr:8191
+      AGENT_SEARCH_DEFAULT_ENGINES: doubao,github,wikipedia,stackoverflow,google cse
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8078"
+      MCP_STREAMABLE_HTTP_PATH: /agent-search/mcp
+      HTTP_PROXY: http://172.18.0.1:1080
+      HTTPS_PROXY: http://172.18.0.1:1080
+      NO_PROXY: localhost,127.0.0.1,agent-searxng,agent-flaresolverr,agent-search-api,agent-search-mcp
+    depends_on:
+      - searxng
+      - flaresolverr
+    restart: unless-stopped
+    networks:
+      - homepage
+
+networks:
+  homepage:
+    external: true
+    name: homepage_homepage

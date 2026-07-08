@@ -31,6 +31,7 @@ Built-in `WebSearch` / `WebFetch` give you links and snippets. Your agent still 
 - **GitHub, done right** — typed `repos/code/issues/prs` search via the `gh` CLI, returning `license / last-commit / archived / forks` for real evaluation, not just stars.
 - **🆕 Tech-selection compare** — `github_compare` pulls **first-party facts** (`gh api`) + **OpenSSF Scorecard** health (via the free [deps.dev](https://deps.dev) API) and flags *archived / stale / no-release / copyleft*. Evidence, not verdicts.
 - **🆕 Universal solution compare** — `compare_solutions` builds a **comparison matrix** for *any* candidates (OSS libs / SaaS / frameworks), not just GitHub repos: GitHub candidates reuse first-party `repo_facts`; non-GitHub ones get official-page rule extraction (price/version/license). **Every cell carries `source_url` + excerpt + confidence** (official/secondary/llm) — traceable, not a black box.
+- **🆕 Deep research reports** — `web_research` runs a plan → fan-out → evidence → per-section synthesis pipeline: the LLM drafts an outline (sections + sub-queries), all sub-queries fire concurrently, top sources get fetched & quality-gated into a **globally numbered source pool**, then each section is written against its own sources with `[n]` citations, plus a conclusion and a code-assembled reference list. Pick a **report type** (`report_type=`): `standard` (default), `detailed` (5–6 deeper sections, more sources), `comparison` (sections organized as comparison dimensions, tables + charts, verdict-style selection advice), or `outline` (planning-only, returns in seconds — confirm the structure, then run the full report). A **gap-reflection round** then reviews the draft, re-searches under-evidenced sections from new angles, and rewrites them (new sources keep global numbering; `RESEARCH_MAX_ROUNDS`). Sections emit Markdown tables, **Vega-Lite charts rendered to inline SVG** (vector, via the optional `vl-convert-python` — no Node/browser; falls back to a ```vega-lite``` spec block for the consumer to render), and mermaid diagrams for flow/architecture. One call → a **multi-section, citation-backed Markdown report** (planning degrades gracefully to static fan-out if the LLM output can't be parsed).
 - **🆕 Recursive deep crawl** — `web_crawl` follows links **2–6 levels deep** (BFS / best-first), returning clean per-page Markdown. Uses Crawl4AI's deep-crawl strategy when installed, else a dependency-free pure-Python BFS. Budget guards (depth/page/time/byte caps) + per-URL SSRF check on every enqueued link. `web_map` scouts (one level, links only); `web_crawl` goes deep (many levels, full text).
 - **Typo-tolerant search** — layered fuzzy fallback: consume SearXNG `corrections` → rapidfuzz edit-distance correction → fuzzy rank bonus → LLM spelling rewrite (all silently degrade if deps absent). A query like `skil` still finds `skill`.
 - **Site mapping** — `sitemap.xml` first, page-link fallback, same-domain dedup.
@@ -121,6 +122,7 @@ cp .mcp.json.example .mcp.json   # set the absolute path to this repo
 |---|---|
 | `web_search` | Meta-search, ranked results |
 | `web_ask` | RAG answer with `[n]` citations + per-source excerpts |
+| `web_research` | Multi-section research report (outline → concurrent fan-out → cited sections + references) |
 | `web_extract` | Fetch a page → clean Markdown |
 | `web_map` | Discover a site's links (sitemap-first) |
 | `web_crawl` | Recursive deep crawl 2–6 levels (links + per-page Markdown, budget + SSRF guarded) |
@@ -132,7 +134,7 @@ cp .mcp.json.example .mcp.json   # set the absolute path to this repo
 
 ## ⚠️ Notes & limitations
 
-- `web_ask` (RAG) needs an OpenAI-compatible LLM key; everything else (search/extract/map/github) needs **no API key**.
+- `web_ask` (RAG) and `web_research` (report) need an OpenAI-compatible LLM key; everything else (search/extract/map/github) needs **no API key**. `web_research` is the heaviest tool (sections+2 LLM calls, ~1–3 min); install the optional `vl-convert-python` to get inline **SVG** charts instead of raw Vega-Lite specs.
 - Extraction does **not** render JS by default — install the optional `crawl4ai` and use `deep=True` for JS-heavy pages.
 - Built for **local / trusted use**: the HTTP server binds `127.0.0.1` by default and extraction has an SSRF guard (blocks localhost / private / cloud-metadata IPs). Add auth + a reverse proxy before exposing it.
 - This is a personal project, maintained best-effort. Issues/PRs welcome but no SLA.

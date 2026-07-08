@@ -1,41 +1,39 @@
 {
   "metrics": {
-    "total_score": 88.92,
-    "passed": 56,
+    "total_score": 91.93,
+    "passed": 58,
     "total": 59,
     "scored": 59,
     "skipped": 0,
-    "expected_domain_hit_rate": 0.6944,
-    "must_terms_hit_rate": 0.9574,
+    "expected_domain_hit_rate": 0.75,
+    "must_terms_hit_rate": 0.9537,
     "avoid_domain_violation_rate": 0.1111,
     "official_source_rate": 1.0,
     "extraction_quality_rate": 1.0,
     "ask_source_rate": 1.0,
-    "avg_latency_ms": 124.1,
+    "avg_latency_ms": 863.9,
     "type_scores": {
-      "search": 85.86,
-      "ask": 81.48,
+      "search": 88.39,
+      "ask": 82.54,
       "github": 100.0,
       "extract": 100.0,
-      "map": 75.0,
+      "map": 100.0,
       "crawl": 100.0,
       "compare": 97.22
     },
     "failed_cases": [
-      "s_news_ai_industry_cn",
-      "m_react_dev",
       "s_seo_best_programming_language"
     ],
     "budget": {
-      "run_network": 0,
-      "run_ask": 0,
-      "cum_network": 51,
-      "cum_ask": 16,
-      "internal_http_fetches": 0,
+      "run_network": 9,
+      "run_ask": 5,
+      "cum_network": 40,
+      "cum_ask": 24,
+      "internal_http_fetches": 77,
       "hard_network_limit": 120,
       "hard_ask_limit": 24
     },
-    "wall_ms": 7345
+    "wall_ms": 50997
   },
   "cases": [
     {
@@ -43,27 +41,27 @@
       "type": "search",
       "passed": true,
       "score": 0.8,
-      "latency_ms": 5,
+      "latency_ms": 6,
       "reason": "PASS score=0.8 | 域命中 | 术语1.0 | 权威源✗",
       "observed_domains": [
         "openai.com",
         "openai.com",
-        "openai.com",
-        "openai.com",
-        "openai.com",
-        "community.openai.com",
-        "openai.com",
-        "openai.com"
+        "news.qq.com",
+        "m.thepaper.cn",
+        "m.techweb.com.cn",
+        "cj.sina.cn",
+        "36kr.com",
+        "soft.china.com"
       ],
       "matched_terms": [
         "OpenAI"
       ],
       "source_urls": [
-        "https://openai.com/index/openai-and-broadcom-announce-strategic-collaboration/",
-        "https://openai.com/research/index/release/",
-        "https://openai.com/index/openai-launches-the-deployment-company/",
-        "https://openai.com/zh-Hans-CN/news/product-releases/?tags=topic-product",
-        "https://openai.com/news/company-announcements/"
+        "https://openai.com/zh-Hans-CN/news/product-releases/",
+        "https://openai.com/zh-Hans-CN/news/?display=list",
+        "http://news.qq.com/rain/a/20260625A020OC00",
+        "https://m.thepaper.cn/newsDetail_forward_33454455",
+        "https://m.techweb.com.cn/article/2026-06-25/2976856.shtml"
       ],
       "detail": {
         "has_results": true,
@@ -85,28 +83,28 @@
       "type": "search",
       "passed": true,
       "score": 0.8,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=0.8 | 域命中 | 术语1.0 | 权威源✗",
       "observed_domains": [
         "nvidianews.nvidia.com",
         "nvidianews.nvidia.com",
         "nvidianews.nvidia.com",
-        "nvidianews.nvidia.com",
-        "nvidianews.nvidia.com",
-        "nvidianews.nvidia.com",
-        "nvidianews.nvidia.com",
-        "blogs.nvidia.cn"
+        "news.qq.com",
+        "blogs.nvidia.cn",
+        "nvidia.com",
+        "blogs.nvidia.com",
+        "vip.stock.finance.sina.com.cn"
       ],
       "matched_terms": [
         "Nvidia",
         "AI"
       ],
       "source_urls": [
-        "https://nvidianews.nvidia.com/news/nvidia-vera-rubin-platform",
         "https://nvidianews.nvidia.com/news/nvidia-nvlink-fusion-semi-custom-ai-infrastructure-partner-ecosystem",
-        "https://nvidianews.nvidia.com/news/nvidia-microsoft-windows-pcs-agents-rtx-spark",
-        "https://nvidianews.nvidia.com/news",
-        "https://nvidianews.nvidia.com/news/rubin-platform-ai-supercomputer"
+        "https://nvidianews.nvidia.com/news/nvidia-vera-rubin-platform",
+        "https://nvidianews.nvidia.com/news/nvidia-unveils-rubin-cpx-a-new-class-of-gpu-designed-for-massive-context-inference",
+        "http://news.qq.com/rain/a/20260625A02IEZ00",
+        "https://blogs.nvidia.cn/blog/nvidia-vera-rubin-platform/"
       ],
       "detail": {
         "has_results": true,
@@ -126,39 +124,39 @@
     {
       "id": "s_news_ai_industry_cn",
       "type": "search",
-      "passed": false,
-      "score": 0.4,
+      "passed": true,
+      "score": 0.8,
       "latency_ms": 0,
-      "reason": "FAIL score=0.4 | 域未命中 | 术语1.0 | 权威源✗",
+      "reason": "PASS score=0.8 | 域命中 | 术语1.0 | 权威源✗",
       "observed_domains": [
-        "aicpb.com",
-        "news.aibase.cn",
-        "openai.com",
-        "aibase.com",
-        "news.aibase.com",
-        "aihub.cn",
-        "aitop100.cn",
-        "1ai.net"
+        "stcn.com",
+        "finance.sina.cn",
+        "cnr.cn",
+        "m.bjnews.com.cn",
+        "news.cnr.cn",
+        "3g.china.com",
+        "news.cnr.cn",
+        "www3.xinhuanet.com"
       ],
       "matched_terms": [
         "AI"
       ],
       "source_urls": [
-        "https://www.aicpb.com/news",
-        "https://news.aibase.cn/",
-        "https://openai.com/news/",
-        "https://www.aibase.com/news",
-        "https://news.aibase.com/news"
+        "https://www.stcn.com/article/detail/3978450.html",
+        "http://finance.sina.cn/2026-06-25/detail-iniepzpe1202663.d.html",
+        "http://www.cnr.cn/mspd/msyx/20260625/t20260625_527675690.shtml",
+        "https://m.bjnews.com.cn/detail/1782405519189409.html",
+        "http://news.cnr.cn/native/gd/20260617/t20260617_527665611.shtml"
       ],
       "detail": {
         "has_results": true,
-        "expected_domain_top3": false,
-        "expected_domain_top5": false,
+        "expected_domain_top3": true,
+        "expected_domain_top5": true,
         "must_terms_frac": 1.0,
         "preferred_source_ok": false
       },
       "extra": {
-        "hit_expected": false,
+        "hit_expected": true,
         "avoid_violated": null,
         "must_frac": 1.0,
         "preferred_official": null
@@ -170,17 +168,17 @@
       "type": "search",
       "passed": true,
       "score": 0.8,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=0.8 | 域命中 | 术语1.0 | 权威源✗",
       "observed_domains": [
         "apple.com",
         "images.apple.com",
-        "apple.com",
-        "apple.com",
-        "apple.com",
-        "apple.com",
         "images.apple.com",
-        "apple.com"
+        "apple.com",
+        "news.qq.com",
+        "images.apple.com",
+        "k.sina.cn",
+        "m.sohu.com"
       ],
       "matched_terms": [
         "Apple",
@@ -189,9 +187,9 @@
       "source_urls": [
         "https://www.apple.com/tw/newsroom/2026/06/apple-unveils-next-generation-of-apple-intelligence-siri-ai-and-more/",
         "https://images.apple.com/hk/newsroom/2026/06/apple-unveils-next-generation-of-apple-intelligence-siri-ai-and-more/",
-        "https://www.apple.com/newsroom/2026/06/apple-unveils-next-generation-of-apple-intelligence-siri-ai-and-more/",
-        "https://www.apple.com/newsroom/2024/10/apple-intelligence-is-available-today-on-iphone-ipad-and-mac/",
-        "https://www.apple.com/newsroom/topics/apple-intelligence/"
+        "https://images.apple.com/es/newsroom/2026/06/apple-unveils-next-generation-of-apple-intelligence-siri-ai-and-more/",
+        "https://www.apple.com/jp/newsroom/2026/06/apple-unveils-next-generation-of-apple-intelligence-siri-ai-and-more/",
+        "http://news.qq.com/rain/a/20260609A01SAB00"
       ],
       "detail": {
         "has_results": true,
@@ -219,9 +217,9 @@
         "docs.python.org",
         "docs.python.org",
         "docs.python.org",
+        "python.readthedocs.io",
         "docs.python.org",
-        "docs.python.org",
-        "docs.python.org",
+        "python.readthedocs.io",
         "docs.python.org",
         "docs.python.org"
       ],
@@ -234,7 +232,7 @@
         "https://docs.python.org/release/3.6.5/library/asyncio.html",
         "https://docs.python.org/es/3.6/library/asyncio.html",
         "http://docs.python.org/dev/py3k/library/asyncio.html",
-        "https://docs.python.org/zh-tw/3.6/library/asyncio.html",
+        "https://python.readthedocs.io/fr/latest/library/asyncio.html",
         "https://docs.python.org/3/library/asyncio-task.html#id2"
       ],
       "detail": {
@@ -258,17 +256,17 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 1,
+      "latency_ms": 2,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "developer.mozilla.org",
         "developer.mozilla.org",
         "developer.mozilla.org",
+        "developer.cloud.tencent.com",
         "developer.mozilla.org",
-        "developer.cdn.mozilla.net",
         "dev.to",
         "developer.mozilla.org",
-        "cloud.tencent.com"
+        "developer.cdn.mozilla.net"
       ],
       "matched_terms": [
         "fetch",
@@ -279,8 +277,8 @@
         "https://developer.mozilla.org/zh-CN/docs/Web/API/Fetch_API/Using_Fetch",
         "https://developer.mozilla.org/es/docs/Web/API/Fetch_API/Using_Fetch",
         "https://developer.mozilla.org/zh-TW/docs/Web/API/Fetch_API/Using_Fetch",
-        "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch#including_credentials",
-        "https://developer.cdn.mozilla.net/zh-CN/docs/Web/API/Fetch_API"
+        "https://developer.cloud.tencent.com/article/2321361",
+        "https://developer.mozilla.org/en-US/docs/web/api/fetch_api/using_fetch"
       ],
       "detail": {
         "has_results": true,
@@ -303,17 +301,17 @@
       "type": "search",
       "passed": true,
       "score": 0.9216,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=0.9216 | 域命中 | 术语0.67 | 权威源✓",
       "observed_domains": [
         "zh-hans.react.dev",
+        "react.dev",
         "legacy.reactjs.org",
         "zh-hans.legacy.reactjs.org",
         "legacy.reactjs.org",
         "zh-hans.react.dev",
-        "wenku.csdn.net",
         "blog.csdn.net",
-        "blog.51cto.com"
+        "wenku.csdn.net"
       ],
       "matched_terms": [
         "useEffect",
@@ -321,10 +319,10 @@
       ],
       "source_urls": [
         "https://zh-hans.react.dev/reference/react/hooks",
-        "https://legacy.reactjs.org/docs/hooks-effect.html",
+        "https://react.dev/reference/react/useEffectEvent",
+        "https://legacy.reactjs.org/docs/hooks-effect.html?ref=thegreatcodeadventure.com",
         "https://zh-hans.legacy.reactjs.org/docs/hooks-overview.html",
-        "https://legacy.reactjs.org/docs/hooks-reference.html?c=insights",
-        "https://zh-hans.react.dev/reference/react/useEffect"
+        "https://legacy.reactjs.org/docs/hooks-reference.html?trk=article-ssr-frontend-pulse_x-social-details_comments-action_comment-text"
       ],
       "detail": {
         "has_results": true,
@@ -347,7 +345,7 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "kubernetes.io",
@@ -356,8 +354,8 @@
         "kubernetes.io",
         "cloudnative-tech.com",
         "cloud.tencent.com",
-        "kubernetes.io",
-        "icode.best"
+        "wenku.csdn.net",
+        "kubernetes.io"
       ],
       "matched_terms": [
         "Deployment",
@@ -392,7 +390,7 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "go.dev",
@@ -400,8 +398,8 @@
         "go.dev",
         "go.dev",
         "go.dev",
-        "developer.aliyun.com",
         "juejin.cn",
+        "blog.csdn.net",
         "cnblogs.com"
       ],
       "matched_terms": [
@@ -411,9 +409,9 @@
       ],
       "source_urls": [
         "https://go.dev/talks/2013/advconc.slide",
-        "https://go.dev/tour/concurrency/default-selection.go",
+        "https://go.dev/tour/list",
         "https://go.dev/talks/2013/go4python.slide",
-        "https://go.dev/tour/concurrency/1",
+        "https://go.dev/tour/concurrency/1-select",
         "https://go.dev/tour/concurrency/2?ref=hackernoon.com"
       ],
       "detail": {
@@ -443,11 +441,11 @@
         "platform.openai.com",
         "platform.openai.com",
         "platform.openai.com",
-        "aipricing.guru",
-        "openai.com",
-        "silicondata.com",
+        "platform.openai.com",
+        "platform.openai.com",
+        "markaicode.com",
         "costbench.com",
-        "gptprompts.ai"
+        "silicondata.com"
       ],
       "matched_terms": [
         "pricing",
@@ -456,9 +454,9 @@
       "source_urls": [
         "https://platform.openai.com/docs/pricing?latest-pricing=standard",
         "https://platform.openai.com/docs/pricing?818cd8ae_page=2&84408523_page=7",
+        "https://platform.openai.com/docs/pricing",
         "https://platform.openai.com/docs/models/gpt-5.1",
-        "https://www.aipricing.guru/openai-pricing/",
-        "https://openai.com/api/pricing/?ref=sudowrite.com"
+        "https://platform.openai.com/docs/models/o1-preview"
       ],
       "detail": {
         "has_results": true,
@@ -480,22 +478,22 @@
       "type": "ask",
       "passed": true,
       "score": 0.8571,
-      "latency_ms": 148,
+      "latency_ms": 170,
       "reason": "PASS score=0.8571 | 源域命中 | 术语0.5 | 有excerpt",
       "observed_domains": [
         "docs.anthropic.com",
+        "claudeapi.com",
         "docs.anthropic.com",
-        "anthropic.com",
-        "platform.claude.com"
+        "anthropic.com"
       ],
       "matched_terms": [
         "pricing"
       ],
       "source_urls": [
         "https://docs.anthropic.com/zh-CN/docs/about-claude/pricing",
+        "https://www.claudeapi.com/en/blog/pricing/claude-api-pricing-guide/",
         "https://docs.anthropic.com/zh-TW/docs/about-claude/pricing",
-        "https://www.anthropic.com/news/claude-3-7-sonnet?content=Feb2025Ambassador&medium=email&messageTypeId=140367&source=i_email",
-        "https://platform.claude.com/docs/ja/about-claude/pricing"
+        "https://www.anthropic.com/pricing#api"
       ],
       "detail": {
         "answer_nonempty": true,
@@ -517,14 +515,14 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "azure.microsoft.com",
         "azure.microsoft.com",
         "azure.microsoft.com",
         "learn.microsoft.com",
-        "azure.cn",
+        "docs.microsoft.com",
         "cloudpricecheck.com",
         "caifuhao.eastmoney.com",
         "indianexpress.com"
@@ -538,7 +536,7 @@
         "https://azure.microsoft.com/zh-cn/pricing/details/cognitive-services/openai-service/",
         "https://azure.microsoft.com/zh-cn/pricing/details/ai-foundry-models/fine-tuning-models/",
         "https://learn.microsoft.com/en-au/answers/questions/5841927/pricing-for-gpt-5-4-5-4-mini-5-4-nano",
-        "https://www.azure.cn/pricing/details/cognitive-services/"
+        "https://docs.microsoft.com/zh-cn/azure/ai-foundry/openai/how-to/fine-tuning-cost-management?source=recommendations"
       ],
       "detail": {
         "has_results": true,
@@ -560,28 +558,28 @@
       "type": "search",
       "passed": true,
       "score": 0.6,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=0.6 | 域未命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "ai.google.dev",
         "cloudzero.com",
         "deploybase.ai",
         "deploybase.ai",
-        "zerotoaiagents.com",
-        "discuss.google.dev",
+        "modern-datatools.com",
         "googleapis.dev",
-        "futureagi.com"
+        "futureagi.com",
+        "ai.google.dev"
       ],
       "matched_terms": [
         "pricing",
         "Vertex AI"
       ],
       "source_urls": [
-        "https://ai.google.dev/gemma/docs/integrations/gke?hl=fr",
+        "https://ai.google.dev/gemma/docs/integrations/google-cloud?authuser=2",
         "https://www.cloudzero.com/blog/google-vertex-ai-pricing/",
         "https://deploybase.ai/articles/vertex-ai-pricing",
         "https://deploybase.ai/articles/google-ai-studio-pricing",
-        "https://www.zerotoaiagents.com/reviews/google-vertex-ai-agent-builder"
+        "https://www.modern-datatools.com/tools/google-cloud-ai-platform/pricing"
       ],
       "detail": {
         "has_results": true,
@@ -603,23 +601,23 @@
       "type": "ask",
       "passed": true,
       "score": 0.7143,
-      "latency_ms": 14,
+      "latency_ms": 10,
       "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
         "repost.aws",
         "repost.aws",
-        "pricepertoken.com",
-        "news.qq.com"
+        "repost.aws",
+        "pricepertoken.com"
       ],
       "matched_terms": [
         "pricing",
         "Bedrock"
       ],
       "source_urls": [
-        "https://repost.aws/es/questions/QU9Q9nxSogR9C4D878NhnHug/pricing-of-aws-bedrock-agents",
-        "https://repost.aws/es/questions/QUbSlO38U4SGe1KlKtUW_USg/api-for-bedrock-foundation-models-pricings",
-        "https://pricepertoken.com/endpoints/bedrock",
-        "http://news.qq.com/rain/a/20260525A05S5X00"
+        "https://repost.aws/zh-Hans/questions/QU9Q9nxSogR9C4D878NhnHug/pricing-of-aws-bedrock-agents",
+        "https://repost.aws/zh-Hans/questions/QUbSlO38U4SGe1KlKtUW_USg/api-for-bedrock-foundation-models-pricings",
+        "https://repost.aws/zh-Hant/questions/QU1IfSsHSsTbKfUtMlhvOHxw/api-for-the-pricing-of-bedrock-foundational-models",
+        "https://pricepertoken.com/endpoints/bedrock"
       ],
       "detail": {
         "answer_nonempty": true,
@@ -646,11 +644,11 @@
       "observed_domains": [],
       "matched_terms": [],
       "source_urls": [
-        "https://github.com/MohammedUmerKhan/CommFusionAPI",
         "https://github.com/yasir-soomro/Fastapi-Python-Web-Framework",
         "https://github.com/IrshadShah99/Machine-Test-Fastapi-Python-web-framework",
         "https://github.com/Sammycode332/fastapi",
-        "https://github.com/Nwafor6/websocket-fastapi"
+        "https://github.com/Nwafor6/websocket-fastapi",
+        "https://github.com/Maghanga97/fastapi-crud"
       ],
       "detail": {
         "total": 5,
@@ -767,10 +765,10 @@
       ],
       "source_urls": [
         "https://github.com/django/django/pull/21521",
+        "https://github.com/django/django/pull/21443",
         "https://github.com/django/django/pull/21381",
         "https://github.com/django/django/pull/21444",
-        "https://github.com/django/django/pull/21416",
-        "https://github.com/django/django/pull/21327"
+        "https://github.com/django/django/pull/21416"
       ],
       "detail": {
         "total": 5,
@@ -785,15 +783,15 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "developer.aliyun.com:443",
-        "developer.aliyun.com",
         "docs.python.org",
-        "m.jb51.net",
-        "docs.pingcode.com",
+        "developer.aliyun.com",
         "m.php.cn",
+        "wenku.csdn.net",
+        "sichuanhong.com",
         "volcengine.com",
         "blog.csdn.net"
       ],
@@ -803,10 +801,10 @@
       ],
       "source_urls": [
         "https://developer.aliyun.com:443/article/1711273",
+        "https://docs.python.org/zh-cn/3.13/tutorial/datastructures.html#data-structures",
         "https://developer.aliyun.com/article/1705344",
-        "https://docs.python.org/zh-cn/3/tutorial/datastructures.html?referer=www.cuteslator.com",
-        "https://m.jb51.net/python/365553nak.htm",
-        "https://docs.pingcode.com/insights/qo57qmn3uhsttrmze3vi7e8q"
+        "https://m.php.cn/faq/2155133.html",
+        "https://wenku.csdn.net/doc/5cn0m5mjs1"
       ],
       "detail": {
         "has_results": true,
@@ -828,28 +826,28 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
-        "kubernetes.ac.cn",
         "kubernetes.io",
         "kubernetes.io",
         "kubernetes.io",
-        "kubernetes.ac.cn",
-        "apiref.com",
+        "v1-30.kubernetes.ac.cn",
         "developer.aliyun.com",
-        "support.huaweicloud.com"
+        "support.huaweicloud.com",
+        "support.huaweicloud.com",
+        "ibm.com"
       ],
       "matched_terms": [
         "Kubernetes",
         "容器编排"
       ],
       "source_urls": [
-        "https://kubernetes.ac.cn/docs/whatisk8s/",
         "https://kubernetes.io/zh-cn/docs/concepts/overview/",
         "https://kubernetes.io/zh-cn/docs/home/",
         "https://kubernetes.io/docs/home/",
-        "https://kubernetes.ac.cn/docs/concepts/workloads/pods/"
+        "https://v1-30.kubernetes.ac.cn/",
+        "https://developer.aliyun.com/article/1682653"
       ],
       "detail": {
         "has_results": true,
@@ -914,17 +912,17 @@
       "type": "search",
       "passed": true,
       "score": 0.6,
-      "latency_ms": 2,
+      "latency_ms": 3887,
       "reason": "PASS score=0.6 | 域未命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
-        "github.com",
         "github.com",
         "dingjingmaster.github.io",
         "css-tricks.com",
         "git-tower.com",
         "45256.com",
         "developer.aliyun.com",
-        "reddit.com"
+        "reddit.com",
+        "ask.csdn.net"
       ],
       "matched_terms": [
         "rebase",
@@ -932,11 +930,11 @@
         "分支"
       ],
       "source_urls": [
-        "https://github.com/sisterAn/JavaScript-Algorithms/issues/164",
         "https://github.com/febobo/web-interview/issues/228",
         "https://dingjingmaster.github.io/2022/05/0002-rebase%E4%B8%8Emerge%E7%9A%84%E5%8C%BA%E5%88%AB/",
         "https://css-tricks.com/rebase-vs-merge-integrating-changes-in-git/",
-        "https://www.git-tower.com/learn/git/faq/rebase"
+        "https://www.git-tower.com/learn/git/faq/rebase",
+        "https://45256.com/details/68140356792"
       ],
       "detail": {
         "has_results": true,
@@ -972,11 +970,11 @@
         "https://en.wikipedia.org/wiki/Python_(programming_language)"
       ],
       "detail": {
-        "md_len": 124203,
+        "md_len": 91818,
         "quality_ok": true,
-        "noise_ratio": 0.0002,
+        "noise_ratio": 0.0007,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -989,7 +987,7 @@
       "type": "extract",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=1.0 | 术语1.0 | 正文质量OK",
       "observed_domains": [
         "developer.mozilla.org"
@@ -1003,11 +1001,11 @@
         "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API"
       ],
       "detail": {
-        "md_len": 3295,
+        "md_len": 2744,
         "quality_ok": true,
         "noise_ratio": 0.0,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -1020,7 +1018,7 @@
       "type": "extract",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 4,
+      "latency_ms": 5,
       "reason": "PASS score=1.0 | 术语1.0 | 正文质量OK",
       "observed_domains": [
         "docs.python.org"
@@ -1034,11 +1032,11 @@
         "https://docs.python.org/3/library/functions.html"
       ],
       "detail": {
-        "md_len": 71397,
+        "md_len": 78914,
         "quality_ok": true,
-        "noise_ratio": 0.0012,
+        "noise_ratio": 0.001,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -1051,7 +1049,7 @@
       "type": "extract",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 2,
+      "latency_ms": 3,
       "reason": "PASS score=1.0 | 术语1.0 | 正文质量OK",
       "observed_domains": [
         "en.wikipedia.org"
@@ -1066,11 +1064,11 @@
         "https://en.wikipedia.org/wiki/List_of_HTTP_status_codes"
       ],
       "detail": {
-        "md_len": 52419,
+        "md_len": 40509,
         "quality_ok": true,
-        "noise_ratio": 0.0002,
+        "noise_ratio": 0.0005,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -1128,11 +1126,11 @@
         "https://wiki.python.org/moin/GlobalInterpreterLock"
       ],
       "detail": {
-        "md_len": 9917,
+        "md_len": 8846,
         "quality_ok": true,
         "noise_ratio": 0.0003,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -1144,34 +1142,34 @@
       "id": "a_snip_python_creator",
       "type": "ask",
       "passed": true,
-      "score": 0.7143,
-      "latency_ms": 3,
-      "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
+      "score": 1.0,
+      "latency_ms": 4692,
+      "reason": "PASS score=1.0 | 源域命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
+        "en.wikipedia.org",
+        "docs.python.org",
         "plainenglish.io",
-        "pythoninstitute.org",
-        "britannica.com",
-        "blog.csdn.net"
+        "pythoninstitute.org"
       ],
       "matched_terms": [
         "Guido van Rossum",
         "Python"
       ],
       "source_urls": [
+        "https://en.wikipedia.org/wiki/Python_(programming_language)",
+        "https://docs.python.org/3/faq/general.html",
         "https://plainenglish.io/community/guido-van-rossum-the-creator-of-python-programming-language",
-        "https://www.pythoninstitute.org/about-python",
-        "https://www.britannica.com/technology/Python-computer-language",
-        "https://blog.csdn.net/weixin_39526415/article/details/110698758"
+        "https://www.pythoninstitute.org/about-python"
       ],
       "detail": {
         "answer_nonempty": true,
         "sources_nonempty": true,
         "answer_terms_frac": 1.0,
-        "source_domain_hit": false,
+        "source_domain_hit": true,
         "source_has_excerpt": true
       },
       "extra": {
-        "hit_expected": false,
+        "hit_expected": true,
         "sources_nonempty": true,
         "must_frac": 1.0,
         "has_excerpt": true
@@ -1183,13 +1181,13 @@
       "type": "ask",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 6,
+      "latency_ms": 9,
       "reason": "PASS score=1.0 | 源域命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
+        "developer.mozilla.org",
+        "developer.mozilla.org",
         "epicreact.dev",
-        "legacy.reactjs.org",
-        "topcoder.com",
-        "zh-hans.react.dev"
+        "legacy.reactjs.org"
       ],
       "matched_terms": [
         "React",
@@ -1197,10 +1195,10 @@
         "JavaScript"
       ],
       "source_urls": [
+        "https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Client-side_JavaScript_frameworks/React_getting_started?retiredLocale=hu",
+        "https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Core/Frameworks_libraries/React_getting_started",
         "https://www.epicreact.dev/what-is-react?ck_subscriber_id=1994202936",
-        "https://legacy.reactjs.org/",
-        "https://www.topcoder.com/thrive/articles/react-developer-react-native-react-frontend-and-backend-development",
-        "https://zh-hans.react.dev/?ref=www.hisnav.com"
+        "https://legacy.reactjs.org/"
       ],
       "detail": {
         "answer_nonempty": true,
@@ -1221,14 +1219,14 @@
       "id": "a_snip_linux_creator",
       "type": "ask",
       "passed": true,
-      "score": 0.7143,
-      "latency_ms": 18,
-      "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
+      "score": 1.0,
+      "latency_ms": 3500,
+      "reason": "PASS score=1.0 | 源域命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
         "linux.com",
-        "handwiki.org",
-        "developer.aliyun.com",
-        "baike.baidu.hk"
+        "en.wikipedia.org",
+        "reddit.com",
+        "handwiki.org"
       ],
       "matched_terms": [
         "Linus Torvalds",
@@ -1237,19 +1235,19 @@
       ],
       "source_urls": [
         "https://www.linux.com/topic/linux/what-linux-kernel/",
-        "https://handwiki.org/wiki/Software:Linux%20kernel",
-        "https://developer.aliyun.com/article/1369517",
-        "https://baike.baidu.hk/item/Linux%20kernel/765824?fromModule=lemma_inlink"
+        "https://en.wikipedia.org/wiki/Linux_kernel",
+        "https://www.reddit.com/r/Damnthatsinteresting/comments/10hxxwn/this_is_linus_torvalds_he_created_the_linux/",
+        "https://handwiki.org/wiki/Software:Linux%20kernel"
       ],
       "detail": {
         "answer_nonempty": true,
         "sources_nonempty": true,
         "answer_terms_frac": 1.0,
-        "source_domain_hit": false,
+        "source_domain_hit": true,
         "source_has_excerpt": true
       },
       "extra": {
-        "hit_expected": false,
+        "hit_expected": true,
         "sources_nonempty": true,
         "must_frac": 1.0,
         "has_excerpt": true
@@ -1261,7 +1259,7 @@
       "type": "map",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 2,
       "reason": "PASS score=1.0",
       "observed_domains": [
         "fastapi.tiangolo.com"
@@ -1288,15 +1286,28 @@
     {
       "id": "m_react_dev",
       "type": "map",
-      "passed": false,
-      "score": 0.0,
-      "latency_ms": 13,
-      "reason": "FAIL score=0.0",
-      "observed_domains": [],
+      "passed": true,
+      "score": 1.0,
+      "latency_ms": 40,
+      "reason": "PASS score=1.0",
+      "observed_domains": [
+        "react.dev"
+      ],
       "matched_terms": [],
-      "source_urls": [],
+      "source_urls": [
+        "https://react.dev/",
+        "https://react.dev/versions",
+        "https://react.dev/learn",
+        "https://react.dev/reference/react",
+        "https://react.dev/community"
+      ],
       "detail": {
-        "link_count": 0
+        "link_count": 22,
+        "same_domain_ratio": 1.0,
+        "valid_source_ratio": 1.0,
+        "sources": [
+          "page"
+        ]
       },
       "extra": {},
       "skipped": false
@@ -1306,7 +1317,7 @@
       "type": "map",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 3,
+      "latency_ms": 18,
       "reason": "PASS score=1.0",
       "observed_domains": [
         "docs.python.org"
@@ -1336,7 +1347,7 @@
       "type": "map",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 6,
+      "latency_ms": 29,
       "reason": "PASS score=1.0",
       "observed_domains": [
         "developer.mozilla.org"
@@ -1365,36 +1376,37 @@
       "id": "a_cross_rest_vs_graphql",
       "type": "ask",
       "passed": true,
-      "score": 0.619,
-      "latency_ms": 9,
-      "reason": "PASS score=0.619 | 源域未命中 | 术语0.67 | 有excerpt",
+      "score": 0.7143,
+      "latency_ms": 2036,
+      "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
         "apollographql.com",
         "apiseven.com",
-        "apifox.com",
-        "apiseven.com"
+        "cloud.tencent.cn",
+        "apifox.com"
       ],
       "matched_terms": [
         "GraphQL",
-        "REST"
+        "REST",
+        "over-fetching"
       ],
       "source_urls": [
         "https://www.apollographql.com/blog/graphql-vs-rest",
         "https://www.apiseven.com/learning-center/api-101/graphql-vs-rest",
-        "https://apifox.com/apiskills/api-vs-restapi-vs-restfulapi-vs-webservice/",
-        "https://www.apiseven.com/learning-center/api-101"
+        "https://cloud.tencent.cn/developer/article/2562636?policyId=undefined",
+        "https://apifox.com/apiskills/api-vs-restapi-vs-restfulapi-vs-webservice/"
       ],
       "detail": {
         "answer_nonempty": true,
         "sources_nonempty": true,
-        "answer_terms_frac": 0.67,
+        "answer_terms_frac": 1.0,
         "source_domain_hit": false,
         "source_has_excerpt": true
       },
       "extra": {
         "hit_expected": false,
         "sources_nonempty": true,
-        "must_frac": 0.6666666666666666,
+        "must_frac": 1.0,
         "has_excerpt": true
       },
       "skipped": false
@@ -1404,11 +1416,11 @@
       "type": "ask",
       "passed": true,
       "score": 0.7143,
-      "latency_ms": 4,
+      "latency_ms": 5404,
       "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
         "developer.aliyun.com",
-        "reddit.com",
+        "gist.github.com",
         "cloud.tencent.com",
         "wenku.csdn.net"
       ],
@@ -1419,7 +1431,7 @@
       ],
       "source_urls": [
         "https://developer.aliyun.com/article/1663061",
-        "https://www.reddit.com/r/webdev/comments/1ibe6u1/jwt_vs_cookies/?tl=zh-hans",
+        "https://gist.github.com/riskers/1deb046e0c2d0f130980bab4bbd17abb",
         "https://cloud.tencent.com/developer/article/2412542",
         "https://wenku.csdn.net/answer/2j3twvxe6o8f"
       ],
@@ -1442,14 +1454,14 @@
       "id": "a_cross_acid_vs_base",
       "type": "ask",
       "passed": true,
-      "score": 1.0,
-      "latency_ms": 4,
-      "reason": "PASS score=1.0 | 源域命中 | 术语1.0 | 有excerpt",
+      "score": 0.7143,
+      "latency_ms": 2322,
+      "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
-        "aws.amazon.com",
+        "neo4j.com.cn",
         "developer.aliyun.com",
         "cloud.tencent.com",
-        "developer.aliyun.com"
+        "developer.aliyun.com:443"
       ],
       "matched_terms": [
         "ACID",
@@ -1457,20 +1469,20 @@
         "CAP"
       ],
       "source_urls": [
-        "https://aws.amazon.com/cn/compare/the-difference-between-acid-and-base-database/",
+        "http://neo4j.com.cn/topic/5d2fd5eeb2f2eb3c4208cbeb",
         "https://developer.aliyun.com/article/684763",
         "https://cloud.tencent.com/developer/ask/2113683/answer/2857719",
-        "https://developer.aliyun.com/article/1717661"
+        "https://developer.aliyun.com:443/article/1717661"
       ],
       "detail": {
         "answer_nonempty": true,
         "sources_nonempty": true,
         "answer_terms_frac": 1.0,
-        "source_domain_hit": true,
+        "source_domain_hit": false,
         "source_has_excerpt": true
       },
       "extra": {
-        "hit_expected": true,
+        "hit_expected": false,
         "sources_nonempty": true,
         "must_frac": 1.0,
         "has_excerpt": true
@@ -1482,13 +1494,13 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 2,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "wiki.python.org",
         "wiki.python.org",
+        "m.toutiao.com",
         "oryoy.com",
-        "blog.51cto.com",
         "jb123.cn",
         "oryoy.com",
         "volcengine.com",
@@ -1501,8 +1513,8 @@
       "source_urls": [
         "http://wiki.python.org/python/Documentation.html",
         "http://wiki.python.org/moin/BeginnersGuideChinese",
+        "http://m.toutiao.com/group/7648076197632459304/?upstream_biz=VolcEngine",
         "https://www.oryoy.com/news/xue-hui-python-zhao-wen-dang-qing-song-shang-shou-si-da-cha-zhao-ji-qiao-zhu-ni-gao-xiao-xue-xi-bian.html",
-        "https://blog.51cto.com/u_16099247/14710497",
         "https://jb123.cn/python/35932.html"
       ],
       "detail": {
@@ -1525,42 +1537,41 @@
       "id": "s_seo_javascript_tutorial",
       "type": "search",
       "passed": true,
-      "score": 1.0,
-      "latency_ms": 0,
-      "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
+      "score": 0.8824,
+      "latency_ms": 1,
+      "reason": "PASS score=0.8824 | 域命中 | 术语0.5 | 权威源✓",
       "observed_domains": [
         "zh.javascript.info",
         "developer.mozilla.org",
         "developer.mozilla.org",
+        "developer.mozilla.org",
+        "developer.mozilla.org",
         "higher.smartedu.cn",
         "higher.smartedu.cn",
-        "jcwlyf.com",
-        "blog.51cto.com",
-        "bilibili.com"
+        "jcwlyf.com"
       ],
       "matched_terms": [
-        "JavaScript",
-        "tutorial"
+        "JavaScript"
       ],
       "source_urls": [
         "https://zh.javascript.info/",
-        "https://developer.mozilla.org/en-US/docs/Web/JavaScript?retiredLocale=he",
+        "https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference",
+        "https://developer.mozilla.org/en-US/docs/learn/javascript/first_steps/what_is_javascript",
         "http://developer.mozilla.org/zh-cn/docs/web/javascript/guide/introduction",
-        "https://higher.smartedu.cn/course/69052de05345b682145772b4",
-        "https://higher.smartedu.cn/course/671aced216d8a05eedca273e"
+        "https://developer.mozilla.org/zh-CN/docs/Learn/Getting_started_with_the_web/JavaScript_basics"
       ],
       "detail": {
         "has_results": true,
         "expected_domain_top3": true,
         "expected_domain_top5": true,
-        "must_terms_frac": 1.0,
+        "must_terms_frac": 0.5,
         "preferred_source_ok": true,
         "avoid_violated": false
       },
       "extra": {
         "hit_expected": true,
         "avoid_violated": false,
-        "must_frac": 1.0,
+        "must_frac": 0.5,
         "preferred_official": true
       },
       "skipped": false
@@ -1570,17 +1581,17 @@
       "type": "search",
       "passed": false,
       "score": 0.4118,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "FAIL score=0.4118 | 域未命中 | 术语0.5 | 命中避免域! | 权威源✓",
       "observed_domains": [
         "developer.aliyun.com",
         "cj.sina.cn",
-        "m.toutiao.com",
         "cj.sina.cn",
         "blog.csdn.net",
         "cnblogs.com",
         "cnblogs.com",
-        "juejin.cn"
+        "developer.aliyun.com",
+        "donews.com"
       ],
       "matched_terms": [
         "developer"
@@ -1588,9 +1599,9 @@
       "source_urls": [
         "https://developer.aliyun.com/article/1741582",
         "https://cj.sina.cn/articles/view/7879848900/1d5acf3c401902tkoc",
-        "http://m.toutiao.com/group/7655590112704709154/?upstream_biz=VolcEngine",
         "https://cj.sina.cn/articles/view/7879848900/1d5acf3c401902n7uy",
-        "https://blog.csdn.net/lxw1844912514/article/details/160485628"
+        "https://blog.csdn.net/lxw1844912514/article/details/160485628",
+        "https://www.cnblogs.com/jaryn/p/20183314"
       ],
       "detail": {
         "has_results": true,
@@ -1613,17 +1624,17 @@
       "type": "search",
       "passed": true,
       "score": 0.8824,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=0.8824 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "apifox.com",
-        "restful-api.dev",
         "algolia.com",
-        "developer.mozilla.org",
         "ibm.com",
         "redhat.com",
+        "developer.mozilla.org",
+        "cloud.tencent.com.cn",
         "ibm.com",
-        "cloud.tencent.com.cn"
+        "ibm.com"
       ],
       "matched_terms": [
         "REST",
@@ -1631,10 +1642,10 @@
       ],
       "source_urls": [
         "https://apifox.com/apiskills/rest-api/",
-        "https://restful-api.dev/rest-fundamentals/",
         "https://www.algolia.com/blog/product/what-is-a-rest-api",
-        "https://developer.mozilla.org/zh-CN/docs/Glossary/REST",
-        "https://www.ibm.com/topics/rest-apis"
+        "https://www.ibm.com/topics/rest-apis",
+        "https://www.redhat.com/zh/topics/api/what-is-a-rest-api?dynamic404=zh",
+        "https://developer.mozilla.org/zh-CN/docs/Glossary/REST"
       ],
       "detail": {
         "has_results": true,
@@ -1671,11 +1682,11 @@
         "https://vitejs.dev/guide/"
       ],
       "detail": {
-        "md_len": 10059,
+        "md_len": 8500,
         "quality_ok": true,
         "noise_ratio": 0.0003,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -1688,7 +1699,7 @@
       "type": "extract",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=1.0 | 术语1.0 | 正文质量OK",
       "observed_domains": [
         "vuejs.org"
@@ -1702,11 +1713,11 @@
         "https://vuejs.org/guide/introduction.html"
       ],
       "detail": {
-        "md_len": 8959,
+        "md_len": 9085,
         "quality_ok": true,
-        "noise_ratio": 0.0065,
+        "noise_ratio": 0.01,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -1733,11 +1744,11 @@
         "https://nextjs.org/docs"
       ],
       "detail": {
-        "md_len": 2765,
+        "md_len": 2812,
         "quality_ok": true,
         "noise_ratio": 0.0,
         "must_terms_frac": 1.0,
-        "method": "trafilatura"
+        "method": "requests"
       },
       "extra": {
         "quality_ok": true,
@@ -1750,17 +1761,17 @@
       "type": "search",
       "passed": true,
       "score": 0.9333,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "reason": "PASS score=0.9333 | 域命中 | 术语0.75 | 权威源✓",
       "observed_domains": [
         "developer.aliyun.com",
         "docs.python.org",
         "superfastpython.com",
-        "developer.aliyun.com:443",
         "m.17golang.com",
+        "developer.aliyun.com:443",
         "docs.python.org",
-        "wenku.csdn.net",
-        "blog.51cto.com"
+        "docs.python.org",
+        "wenku.csdn.net"
       ],
       "matched_terms": [
         "asyncio",
@@ -1771,8 +1782,8 @@
         "https://developer.aliyun.com/article/1709841",
         "https://docs.python.org/release/3.6.5/library/asyncio.html",
         "https://superfastpython.com/what-is-asyncio-in-python/",
-        "https://developer.aliyun.com:443/article/1689146",
-        "https://m.17golang.com/article/599414.html"
+        "https://m.17golang.com/article/599414.html",
+        "https://developer.aliyun.com:443/article/1689146"
       ],
       "detail": {
         "has_results": true,
@@ -1793,17 +1804,17 @@
       "id": "s_mix_react_hooks_best_practice",
       "type": "search",
       "passed": true,
-      "score": 0.6,
-      "latency_ms": 0,
-      "reason": "PASS score=0.6 | 域未命中 | 术语1.0 | 权威源✓",
+      "score": 1.0,
+      "latency_ms": 1,
+      "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "developer.aliyun.com",
         "legacy.reactjs.org",
+        "react.dev",
         "legacy.reactjs.org",
         "reactjs.ac.cn",
+        "reactjs.ac.cn",
         "jishuzhan.net",
-        "legacy.reactjs.org",
-        "legacy.reactjs.org",
         "legacy.reactjs.org"
       ],
       "matched_terms": [
@@ -1814,19 +1825,19 @@
       "source_urls": [
         "https://developer.aliyun.com/article/1683840",
         "https://legacy.reactjs.org/docs/hooks-reference.html?ref=jsramblings.com",
-        "https://legacy.reactjs.org/docs/hooks-faq.html#:~:text=Hooks%20are%20a%20more%20direct,flow%20is%20just%20as%20relevant.",
-        "https://reactjs.ac.cn/reference/rules/rules-of-hooks",
-        "https://jishuzhan.net/article/2029126424376967170"
+        "https://react.dev/reference/rules/react-calls-components-and-hooks",
+        "https://legacy.reactjs.org/docs/hooks-faq.html?ref=localhost",
+        "https://reactjs.ac.cn/reference/rules/rules-of-hooks"
       ],
       "detail": {
         "has_results": true,
-        "expected_domain_top3": false,
-        "expected_domain_top5": false,
+        "expected_domain_top3": true,
+        "expected_domain_top5": true,
         "must_terms_frac": 1.0,
         "preferred_source_ok": true
       },
       "extra": {
-        "hit_expected": false,
+        "hit_expected": true,
         "avoid_violated": null,
         "must_frac": 1.0,
         "preferred_official": true
@@ -1837,14 +1848,14 @@
       "id": "s_mix_k8s_pod_what_is",
       "type": "ask",
       "passed": true,
-      "score": 1.0,
-      "latency_ms": 10,
-      "reason": "PASS score=1.0 | 源域命中 | 术语1.0 | 有excerpt",
+      "score": 0.7143,
+      "latency_ms": 4,
+      "reason": "PASS score=0.7143 | 源域未命中 | 术语1.0 | 有excerpt",
       "observed_domains": [
-        "kubernetes.io",
-        "docs.cloud.google.com",
-        "kubernetes.feisky.xyz",
-        "cloud.tencent.cn"
+        "cloud.tencent.cn",
+        "apiref.com",
+        "support.huaweicloud.com",
+        "support.huaweicloud.com"
       ],
       "matched_terms": [
         "Pod",
@@ -1852,20 +1863,20 @@
         "Kubernetes"
       ],
       "source_urls": [
-        "https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/",
-        "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/verticalpodautoscaler?hl=zh-tw",
-        "https://kubernetes.feisky.xyz/concepts/objects/pod",
-        "https://cloud.tencent.cn/developer/article/2614882?policyId=1003"
+        "https://cloud.tencent.cn/developer/article/2614882?policyId=1003",
+        "https://www.apiref.com/kubernetes-zh/312.html",
+        "http://support.huaweicloud.com/en-us/usermanual-cci/cci_01_0067.html",
+        "https://support.huaweicloud.com/intl/zh-cn/usermanual-cci/cci_01_0067.html"
       ],
       "detail": {
         "answer_nonempty": true,
         "sources_nonempty": true,
         "answer_terms_frac": 1.0,
-        "source_domain_hit": true,
+        "source_domain_hit": false,
         "source_has_excerpt": true
       },
       "extra": {
-        "hit_expected": true,
+        "hit_expected": false,
         "sources_nonempty": true,
         "must_frac": 1.0,
         "has_excerpt": true
@@ -1877,17 +1888,17 @@
       "type": "search",
       "passed": true,
       "score": 0.8333,
-      "latency_ms": 1,
+      "latency_ms": 2073,
       "reason": "PASS score=0.8333 | 域命中 | 术语1.0",
       "observed_domains": [
         "redis.ac.cn",
         "gist.github.com",
         "support.huaweicloud.com",
-        "redis.io",
         "aws.amazon.com",
         "wenku.csdn.net",
         "cloud.tencent.com",
-        "support.huaweicloud.com"
+        "support.huaweicloud.com",
+        "medium.com"
       ],
       "matched_terms": [
         "Redis",
@@ -1897,8 +1908,8 @@
         "https://redis.ac.cn/compare/memcached/",
         "https://gist.github.com/d335c4f139ef3da1660e5aeccf7fd107",
         "https://support.huaweicloud.com/topic/1200548-1-R",
-        "https://redis.io/compare/memcached/",
-        "https://aws.amazon.com/elasticache/redis-vs-memcached/"
+        "https://aws.amazon.com/elasticache/redis-vs-memcached/",
+        "https://wenku.csdn.net/doc/b2y8fkj7x6z6"
       ],
       "detail": {
         "has_results": true,
@@ -1919,17 +1930,17 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 1,
+      "latency_ms": 3576,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0",
       "observed_domains": [
         "postgresql.org",
-        "postgresql.org",
-        "kunalganglani.com",
         "openlogic.com",
+        "postgresql.org",
+        "reddit.com",
+        "kunalganglani.com",
+        "percona.com",
         "youtube.com",
-        "crowdstrike.com",
-        "fivetran.com",
-        "aws.amazon.com"
+        "crowdstrike.com"
       ],
       "matched_terms": [
         "PostgreSQL",
@@ -1937,10 +1948,10 @@
       ],
       "source_urls": [
         "https://www.postgresql.org/message-id/54359815.9030209@archidevsys.co.nz",
-        "https://www.postgresql.org/message-id/00d101c1ba43$7bf47cc0$c7feb38e@binary03",
-        "https://www.kunalganglani.com/blog/postgresql-vs-mysql-2026",
         "https://www.openlogic.com/blog/postgresql-vs-mysql",
-        "https://www.youtube.com/watch?v=BtvFuSOAR3E"
+        "https://www.postgresql.org/message-id/00d101c1ba43$7bf47cc0$c7feb38e@binary03",
+        "https://www.reddit.com/r/programming/comments/1q5fqbp/mysql_vs_postgresql_performance_throughput/",
+        "https://www.kunalganglani.com/blog/postgresql-vs-mysql-2026"
       ],
       "detail": {
         "has_results": true,
@@ -1961,7 +1972,7 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 1,
+      "latency_ms": 3248,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0",
       "observed_domains": [
         "fastapi.tiangolo.com",
@@ -2003,7 +2014,7 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 1313,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "kubernetes.io",
@@ -2046,17 +2057,17 @@
       "type": "search",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 0,
+      "latency_ms": 2579,
       "reason": "PASS score=1.0 | 域命中 | 术语1.0 | 权威源✓",
       "observed_domains": [
         "developer.aliyun.com",
         "andy-pearce.com",
         "docs.python.org",
         "docs.python.org",
+        "developer.aliyun.com",
         "superfastpython.com",
         "youtube.com",
-        "developer.aliyun.com:443",
-        "shanechang.com"
+        "developer.aliyun.com:443"
       ],
       "matched_terms": [
         "asyncio"
@@ -2066,7 +2077,7 @@
         "https://www.andy-pearce.com/blog/posts/2016/Jul/the-state-of-python-coroutines-asyncio-callbacks-vs-coroutines/",
         "https://docs.python.org/3/library/asyncio-task.html?highlight=asyncio+wait_for",
         "https://docs.python.org/3/library/asyncio-task.html",
-        "https://superfastpython.com/what-is-asyncio-in-python/"
+        "https://developer.aliyun.com/article/1711277"
       ],
       "detail": {
         "has_results": true,
@@ -2088,7 +2099,7 @@
       "type": "crawl",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 6,
+      "latency_ms": 1368,
       "reason": "PASS score=1.0 | 术语1.0",
       "observed_domains": [
         "docs.python.org"
@@ -2118,7 +2129,7 @@
       "type": "crawl",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 31,
+      "latency_ms": 3441,
       "reason": "PASS score=1.0 | 术语1.0",
       "observed_domains": [
         "fastapi.tiangolo.com"
@@ -2148,7 +2159,7 @@
       "type": "compare",
       "passed": true,
       "score": 1.0,
-      "latency_ms": 3947,
+      "latency_ms": 4105,
       "reason": "PASS score=1.0",
       "observed_domains": [],
       "matched_terms": [],
@@ -2170,7 +2181,7 @@
       "type": "compare",
       "passed": true,
       "score": 0.9444,
-      "latency_ms": 3074,
+      "latency_ms": 7106,
       "reason": "PASS score=0.9444",
       "observed_domains": [],
       "matched_terms": [],

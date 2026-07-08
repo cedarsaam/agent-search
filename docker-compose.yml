@@ -16,6 +16,10 @@ services:
       - SEARXNG_SECRET=${SEARXNG_SECRET_KEY:-ultrasecretkey}
       # 豆包搜索 engine 用的 key（可选，从项目 .env 注入 / optional）
       - WEB_SEARCH_API_KEY=${WEB_SEARCH_API_KEY:-}
+      # Agent Search 专用出站代理：只影响本 compose 内的 SearXNG，不改系统网络
+      - HTTP_PROXY=${AGENT_SEARCH_OUTBOUND_PROXY:-}
+      - HTTPS_PROXY=${AGENT_SEARCH_OUTBOUND_PROXY:-}
+      - NO_PROXY=localhost,127.0.0.1,agent-searxng,agent-flaresolverr
     cap_drop:
       - ALL
     cap_add:
@@ -37,11 +41,10 @@ services:
     environment:
       - LOG_LEVEL=info
       - CAPTCHA_SOLVER=none
-      # 可选：如需通过宿主机代理出站，取消注释并改成你自己的代理端口
-      # Optional: route outbound through a host proxy — uncomment and set your own port
-      # - HTTP_PROXY=http://host.docker.internal:7890
-      # - HTTPS_PROXY=http://host.docker.internal:7890
-      # - NO_PROXY=localhost,127.0.0.1
+      # Agent Search 专用出站代理：只影响本 compose 内的 FlareSolverr，不改系统网络
+      - HTTP_PROXY=${AGENT_SEARCH_OUTBOUND_PROXY:-}
+      - HTTPS_PROXY=${AGENT_SEARCH_OUTBOUND_PROXY:-}
+      - NO_PROXY=localhost,127.0.0.1,agent-searxng,agent-flaresolverr
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

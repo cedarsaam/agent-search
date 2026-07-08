@@ -14,8 +14,25 @@ else
   PY="python3"
 fi
 
+ensure_project_proxy() {
+  if grep -q '^AGENT_SEARCH_OUTBOUND_PROXY=.*17110' "$DIR/.env" 2>/dev/null; then
+    "$DIR/scripts/agent-search-711-proxy.sh" start
+  fi
+}
+
+export_project_proxy_env() {
+  if grep -q '^AGENT_SEARCH_OUTBOUND_PROXY=.*17110' "$DIR/.env" 2>/dev/null; then
+    ensure_project_proxy
+    local port="${AGENT_SEARCH_711_LISTEN_PORT:-17110}"
+    export HTTP_PROXY="http://127.0.0.1:$port"
+    export HTTPS_PROXY="http://127.0.0.1:$port"
+    export NO_PROXY="${NO_PROXY:-localhost,127.0.0.1}"
+  fi
+}
+
 case "${1:-status}" in
   start)
+    ensure_project_proxy
     echo "[*] 启动 SearXNG..."
     docker compose up -d
     echo "[*] 等待就绪..."
@@ -36,6 +53,7 @@ case "${1:-status}" in
     echo "[✓] 已停止"
     ;;
   restart)
+    ensure_project_proxy
     docker compose restart
     echo "[*] 已重启"
     ;;
@@ -49,6 +67,7 @@ case "${1:-status}" in
       echo "[✗] SearXNG: 未运行"
       echo "  执行 ./run.sh start 启动，或设置 SEARXNG_URL 指向其他实例"
     fi
+    "$DIR/scripts/agent-search-711-proxy.sh" status || true
     ;;
   logs)
     docker compose logs -f
@@ -60,6 +79,7 @@ case "${1:-status}" in
     ;;
   search)
     shift
+    export_project_proxy_env
     if [ "$1" = "-f" ] || [ "$1" = "--flaresolverr" ]; then
       "$PY" search.py "$@"
     else
@@ -68,6 +88,7 @@ case "${1:-status}" in
     ;;
   ask)
     shift
+    export_project_proxy_env
     # 检查是否用了 -f
     for arg in "$@"; do
       if [ "$arg" = "-f" ] || [ "$arg" = "--flaresolverr" ]; then
@@ -78,12 +99,14 @@ case "${1:-status}" in
     "$PY" search.py --answer "$@"
     ;;
   serve)
+    export_project_proxy_env
     # HTTP API (给自建 agent / function calling)。8000 常被本机 Qwen3-ASR 占用，默认用 8077
     PORT="${2:-8077}"
     echo "[*] 启动 HTTP API → http://localhost:$PORT  (文档 /docs, 工具 schema /openai-tools)"
-    exec "$DIR/.venv/bin/uvicorn" server:app --host 0.0.0.0 --port "$PORT"
+    exec "$PY" -m uvicorn server:app --host 0.0.0.0 --port "$PORT"
     ;;
   mcp)
+    export_project_proxy_env
     # MCP stdio server (给 Claude Code / Desktop，一般由客户端拉起，这里仅供手动调试)
     exec "$PY" mcp_server.py
     ;;
@@ -125,11 +148,26 @@ case "${1:-status}" in
         ;;
     esac
     ;;
+  proxy)
+    case "${2:-status}" in
+      start|stop|restart|refresh|status|logs)
+        "$DIR/scripts/agent-search-711-proxy.sh" "$2"
+        ;;
+      test)
+        echo "[*] 测试 Agent Search 专用 7-11 出口..."
+        curl -x "http://127.0.0.1:${AGENT_SEARCH_711_LISTEN_PORT:-17110}" -sS --max-time 30 https://api.ipify.org
+        echo ""
+        ;;
+      *)
+        echo "用法: $0 proxy [start|stop|restart|refresh|status|logs|test]"
+        ;;
+    esac
+    ;;
   *)
 
     echo "Agent Search"
     echo "================================"
-    echo "用法: $0 [start|stop|restart|status|logs|pull|search|ask|bridge]"
+    echo "用法: $0 [start|stop|restart|status|logs|pull|search|ask|bridge|proxy]"
     echo ""
     echo "  search <词>         纯搜索               例: $0 search \"deepseek 价格\""
     echo "  search -f <词>      绕过 CAPTCHA 搜索    例: $0 search -f \"关键词\""
@@ -138,6 +176,8 @@ case "${1:-status}" in
     echo "  bridge start        启动 FlareSolverr    例: $0 bridge start"
     echo "  bridge stop         停止 FlareSolverr"
     echo "  bridge status       查看状态"
+    echo "  proxy start         启动 Agent Search 专用 7-11 出口 (:17110)"
+    echo "  proxy test          测试专用出口 IP"
     echo ""
     ./run.sh status
     ;;

@@ -88,10 +88,19 @@ def _load_dotenv():
 
 
 _load_dotenv()
-# .env 加载后刷新配置
+# .env 加载后刷新配置，保证 MCP 从任意 Agent 启动时同目录 .env 都能生效。
+SEARXNG_URL = os.environ.get("SEARXNG_URL", SEARXNG_URL)
+CACHE_DIR = os.environ.get("CACHE_DIR", CACHE_DIR)
+CACHE_TTL_SECONDS = int(os.environ.get("CACHE_TTL", str(CACHE_TTL_SECONDS)))
+JINA_READER = os.environ.get("JINA_READER", JINA_READER).rstrip("/")
+REQUEST_TIMEOUT = int(os.environ.get(
+    "AGENT_SEARCH_REQUEST_TIMEOUT",
+    os.environ.get("REQUEST_TIMEOUT", str(REQUEST_TIMEOUT)),
+))
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+FLARESOLVERR_URL = os.environ.get("FLARESOLVERR_URL", FLARESOLVERR_URL)
 
 # 批量抽取预算(可配): 宽召回(answer / 方案对比)场景的并发抽取上限。
 # 旧实现把 8 条 / 6 worker 写死, 宽召回时优质候选抽不到、answer 凑不够来源。
@@ -99,10 +108,14 @@ EXTRACT_MAX_URLS = int(os.environ.get("EXTRACT_MAX_URLS", "12"))
 EXTRACT_CONCURRENCY = int(os.environ.get("EXTRACT_CONCURRENCY", "8"))
 EXTRACT_TIMEOUT_S = int(os.environ.get("EXTRACT_TIMEOUT_S", "20"))
 
-# SearXNG 默认启用的引擎 (settings.yml 中配置的)
+# SearXNG 默认使用的核心引擎。google/bing/duckduckgo 在当前本地网络下
+# 已禁用或容易 CAPTCHA；brave/startpage/reddit/news 易被限流，保留给显式指定。
 DEFAULT_ENGINES = [
-    "google", "bing", "duckduckgo", "brave", "wikipedia",
-    "github", "stackoverflow", "reddit", "news"
+    e.strip() for e in os.environ.get(
+        "AGENT_SEARCH_DEFAULT_ENGINES",
+        "doubao,github,wikipedia,stackoverflow",
+    ).split(",")
+    if e.strip()
 ]
 
 # 通用的低质量 SEO / 内容农场域名(用于排序降权)。
@@ -730,8 +743,9 @@ class SearXNGEngine:
             "format": "json",
             "pageno": page,
         }
-        if engines:
-            params["engines"] = ",".join(engines)
+        effective_engines = engines if engines is not None else DEFAULT_ENGINES
+        if effective_engines:
+            params["engines"] = ",".join(effective_engines)
         if time_range:
             params["time_range"] = time_range
         if categories:
@@ -1585,14 +1599,15 @@ class DeepCrawler:
 
 
 # ================================================================
-# GitHub 搜索 (复用本机 gh CLI)
+# GitHub 搜索 (优先复用本机 gh CLI，失败时走 GitHub REST API)
 # ================================================================
 
 class GitHubEngine:
-    """通过本机 gh CLI 搜索 GitHub。
+    """搜索 GitHub。
 
-    复用已登录的 gh，无需额外 API key，且速率限制比匿名高。
-    适合查仓库 / 代码 / issue / PR —— 比网页搜索精准。
+    优先复用已登录的 gh CLI，速率限制比匿名高；容器或服务器里没有 gh 时，
+    回退到 GitHub REST API。REST API 可匿名使用，也会自动读取 GITHUB_TOKEN/GH_TOKEN。
+    适合查仓库 / 代码 / issue / PR，比网页搜索精准。
     """
 
     # 各类型对应的 --json 字段
@@ -1606,13 +1621,97 @@ class GitHubEngine:
     }
 
     def is_available(self):
-        """gh 是否已安装且已登录"""
+        """GitHub 搜索链路是否可用。"""
         try:
             r = subprocess.run(["gh", "auth", "status"],
                                capture_output=True, timeout=5)
-            return r.returncode == 0
+            if r.returncode == 0:
+                return True
         except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        try:
+            r = requests.get(
+                "https://api.github.com/rate_limit",
+                headers=self._api_headers(),
+                timeout=5,
+            )
+            return r.status_code == 200
+        except Exception:
             return False
+
+    def _api_headers(self):
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "agent-search",
+        }
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        return headers
+
+    def _repo_from_api(self, item):
+        return {
+            "fullName": item.get("full_name"),
+            "description": item.get("description") or "",
+            "url": item.get("html_url"),
+            "stargazersCount": item.get("stargazers_count"),
+            "license": item.get("license"),
+            "pushedAt": item.get("pushed_at"),
+            "isArchived": item.get("archived"),
+            "forksCount": item.get("forks_count"),
+        }
+
+    def _code_from_api(self, item):
+        repo = item.get("repository") or {}
+        return {
+            "path": item.get("path"),
+            "repository": repo.get("full_name"),
+            "url": item.get("html_url"),
+        }
+
+    def _issue_from_api(self, item):
+        repo_url = item.get("repository_url") or ""
+        repo = repo_url.rsplit("/repos/", 1)[-1] if "/repos/" in repo_url else ""
+        return {
+            "title": item.get("title"),
+            "url": item.get("html_url"),
+            "repository": repo,
+            "state": item.get("state"),
+        }
+
+    def _search_api(self, query, kind="repos", limit=5):
+        limit = max(1, min(int(limit or 5), 100))
+        if kind == "repos":
+            endpoint = "https://api.github.com/search/repositories"
+            params = {"q": query, "sort": "stars", "order": "desc", "per_page": limit}
+            formatter = self._repo_from_api
+        elif kind == "code":
+            endpoint = "https://api.github.com/search/code"
+            params = {"q": query, "per_page": limit}
+            formatter = self._code_from_api
+        else:
+            endpoint = "https://api.github.com/search/issues"
+            type_filter = "is:pr" if kind == "prs" else "is:issue"
+            params = {"q": f"{query} {type_filter}", "per_page": limit}
+            formatter = self._issue_from_api
+        try:
+            r = requests.get(endpoint, params=params, headers=self._api_headers(), timeout=REQUEST_TIMEOUT)
+            if r.status_code != 200:
+                msg = ""
+                try:
+                    msg = (r.json() or {}).get("message", "")
+                except Exception:
+                    msg = r.text[:200]
+                return {"kind": kind, "query": query, "results": [], "total": 0,
+                        "source": "github_api", "error": f"GitHub API 搜索失败({r.status_code}): {msg[:200]}"}
+            data = r.json() or {}
+            items = [formatter(item) for item in data.get("items", [])[:limit]]
+            return {"kind": kind, "query": query, "results": items, "total": len(items),
+                    "source": "github_api", "error": None}
+        except Exception as e:
+            return {"kind": kind, "query": query, "results": [], "total": 0,
+                    "source": "github_api", "error": f"GitHub API 搜索异常: {e}"}
 
     def search(self, query, kind="repos", limit=5):
         """搜索 GitHub
@@ -1634,33 +1733,53 @@ class GitHubEngine:
                 capture_output=True, text=True, timeout=REQUEST_TIMEOUT,
             )
             if r.returncode != 0:
-                return {"kind": kind, "query": query, "results": [], "total": 0,
-                        "error": f"gh search 失败: {r.stderr.strip()[:200]}"}
+                fallback = self._search_api(query, kind=kind, limit=limit)
+                if fallback.get("error"):
+                    fallback["error"] = f"gh search 失败: {r.stderr.strip()[:200]}; {fallback['error']}"
+                return fallback
             items = json.loads(r.stdout or "[]")
+            if not items:
+                fallback = self._search_api(query, kind=kind, limit=limit)
+                if fallback.get("results"):
+                    return fallback
             return {"kind": kind, "query": query, "results": items,
-                    "total": len(items), "error": None}
+                    "total": len(items), "source": "gh_cli", "error": None}
         except FileNotFoundError:
-            return {"kind": kind, "query": query, "results": [], "total": 0,
-                    "error": "未找到 gh CLI，请先安装 GitHub CLI 并 gh auth login"}
+            return self._search_api(query, kind=kind, limit=limit)
         except subprocess.TimeoutExpired:
-            return {"kind": kind, "query": query, "results": [], "total": 0,
-                    "error": "gh search 超时"}
+            fallback = self._search_api(query, kind=kind, limit=limit)
+            if fallback.get("error"):
+                fallback["error"] = f"gh search 超时; {fallback['error']}"
+            return fallback
         except Exception as e:
-            return {"kind": kind, "query": query, "results": [], "total": 0,
-                    "error": str(e)}
+            fallback = self._search_api(query, kind=kind, limit=limit)
+            if fallback.get("error"):
+                fallback["error"] = f"gh search 异常: {e}; {fallback['error']}"
+            return fallback
 
     # ---------- 技术选型对比(一手数据, 不下结论) ----------
 
+    def _github_api_json(self, path):
+        """GitHub REST API path → dict/list，失败返回 None。"""
+        try:
+            url = "https://api.github.com/" + path.lstrip("/")
+            r = requests.get(url, headers=self._api_headers(), timeout=REQUEST_TIMEOUT)
+            if r.status_code != 200:
+                return None
+            return r.json()
+        except Exception:
+            return None
+
     def _gh_json(self, path):
-        """gh api <path> → dict/list, 失败返回 None。"""
+        """gh api <path> → dict/list；gh 不可用时回退 GitHub REST API。"""
         try:
             r = subprocess.run(["gh", "api", path],
                                capture_output=True, text=True, timeout=REQUEST_TIMEOUT)
-            if r.returncode != 0:
-                return None
-            return json.loads(r.stdout or "null")
+            if r.returncode == 0:
+                return json.loads(r.stdout or "null")
         except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
-            return None
+            pass
+        return self._github_api_json(path)
 
     def _deps_dev(self, repo):
         """deps.dev 免费 API(无需 key): OpenSSF Scorecard 健康分 + 关键检查项。"""
@@ -2023,8 +2142,10 @@ class SolutionComparator:
         sys_p = ("你从资料中抽取某方案的事实, 输出一个 JSON 对象, 键为给定维度, 值为简短中文事实或 null。"
                  "严格不编造, 资料没提到就填 null, 不要任何解释、不要代码块外的文字。")
         user_p = f"方案: {name}\n维度: {dims}\n资料:\n{excerpt}"
+        # max_tokens 需给足: 推理型模型(如 deepseek-v4-flash)思考 token 也计入 max_tokens,
+        # 预算太小会被推理耗尽导致 content 为空(实测 500 全被吃光, 软维度静默抽不出)。
         out = self.e.llm.chat([{"role": "system", "content": sys_p}, {"role": "user", "content": user_p}],
-                              temperature=0.0, max_tokens=400)
+                              temperature=0.0, max_tokens=1200)
         if not isinstance(out, dict) or out.get("error"):
             return
         m = re.search(r"\{.*\}", out.get("content", ""), re.S)
@@ -2039,6 +2160,474 @@ class SolutionComparator:
             if v and isinstance(v, (str, int, float)) and fields.get(dim, {}).get("value") is None:
                 fields[dim].update({"value": str(v)[:120], "source_url": url,
                                     "excerpt": excerpt[:280], "confidence": "llm"})
+
+
+# ================================================================
+# 深度研究 (web_research) — 规划大纲→扇出检索→取证→分章综合→带引用调研报告
+# ================================================================
+
+RESEARCH_MAX_SECTIONS = int(os.environ.get("RESEARCH_MAX_SECTIONS", "6"))
+RESEARCH_MAX_QUERIES = int(os.environ.get("RESEARCH_MAX_QUERIES", "12"))
+RESEARCH_MAX_SOURCES = int(os.environ.get("RESEARCH_MAX_SOURCES", "12"))
+RESEARCH_SECTION_TOKENS = int(os.environ.get("RESEARCH_SECTION_TOKENS", "1600"))
+# 缺口反思: 分章综合后审稿找"证据不足"的章节, 换角度补搜并重写; 0=关闭
+RESEARCH_MAX_ROUNDS = int(os.environ.get("RESEARCH_MAX_ROUNDS", "1"))
+RESEARCH_REFLECT_SOURCES = int(os.environ.get("RESEARCH_REFLECT_SOURCES", "4"))
+
+# 报告类型模板(借鉴 gpt-researcher 的 report_type): 每种在"章节数/来源数/篇幅/规划与
+# 章节/结论 prompt 侧重"上给不同侧重, 复用同一条 规划→扇出→取证→综合 流水线。
+# sections=(min,max) 章节数范围; sources 每章默认来源数; section_tokens 每章篇幅预算。
+REPORT_TYPES = {
+    "standard": {
+        "label": "标准调研", "sections": (3, RESEARCH_MAX_SECTIONS), "sources": 3,
+        "section_tokens": RESEARCH_SECTION_TOKENS,
+        "plan_hint": "覆盖主题的不同侧面且互不重叠",
+        "section_hint": "",
+        "conclusion_hint": "先给核心结论, 再给可操作建议; 各章观点冲突或证据不足处如实指出",
+    },
+    "detailed": {
+        "label": "深度详报", "sections": (5, RESEARCH_MAX_SECTIONS), "sources": 4,
+        "section_tokens": max(RESEARCH_SECTION_TOKENS, 2400),
+        "plan_hint": "尽量拆到 5~6 个细分章节, 覆盖背景/现状/技术细节/横向对比/风险与局限/趋势等多个侧面",
+        "section_hint": "本节要充分展开: 给足细节与数据、多来源交叉印证、必要处列子标题, 篇幅可较长。",
+        "conclusion_hint": "分点给出深入结论与建议, 明确标注各结论的证据强弱与不确定性",
+    },
+    "comparison": {
+        "label": "选型对比", "sections": (3, 5), "sources": 3,
+        "section_tokens": RESEARCH_SECTION_TOKENS,
+        "plan_hint": "把章节组织成对比维度(如 功能特性/性能/生态与集成/成本/适用场景), 每章横向对比各候选",
+        "section_hint": "本节聚焦一个对比维度: 尽量用 Markdown 表格把各候选拉齐, 有可量化数据就画 vega-lite 图, 并明确指出各候选强弱。",
+        "conclusion_hint": "给出选型建议(什么场景选哪个), 如实标注证据不足处, 不要武断下唯一结论",
+    },
+    "outline": {
+        "label": "大纲预览", "sections": (3, RESEARCH_MAX_SECTIONS), "sources": 3,
+        "section_tokens": RESEARCH_SECTION_TOKENS, "outline_only": True,
+        "plan_hint": "覆盖主题的不同侧面且互不重叠, 每章给出清晰、可独立检索的子问题",
+        "section_hint": "", "conclusion_hint": "",
+    },
+}
+
+
+def resolve_report_type(name: str) -> dict:
+    """取报告类型配置(未知类型回退 standard); 返回带 name 的浅拷贝。"""
+    rt = dict(REPORT_TYPES.get((name or "standard").strip().lower(), REPORT_TYPES["standard"]))
+    rt["name"] = (name or "standard").strip().lower() if name and name.strip().lower() in REPORT_TYPES else "standard"
+    return rt
+
+
+# 匹配报告里 LLM 产出的 ```vega-lite / ```vegalite / ```vl JSON 代码块
+_VEGALITE_BLOCK_RE = re.compile(r"```(?:vega-?lite|vl)\s*\n(.*?)\n```", re.S | re.I)
+
+
+def render_vegalite_charts(markdown: str, inline_svg=True) -> tuple:
+    """把报告里的 ```vega-lite JSON 块渲染成内联 SVG 矢量图(可选依赖 vl-convert-python)。
+
+    装了 vl-convert 则每个合法 spec 渲染为 <svg>, inline_svg=True 时就地替换代码块(得到
+    真正的矢量图报告); 未装 / spec 非法 / 渲染失败, 保留原 ```vega-lite 块交由消费端
+    (claude.ai artifact / Jupyter / Vega Editor 等)渲染 —— 与 crawl4ai/trafilatura 同样
+    "可选依赖, 缺失静默降级"。返回 (处理后的 markdown, charts 列表)。
+    charts 每项: {spec, svg 或 None, error 或 None}。
+    """
+    try:
+        import vl_convert as vlc
+    except Exception:
+        vlc = None
+
+    charts = []
+
+    def _sub(m):
+        raw = m.group(1).strip()
+        try:
+            spec = json.loads(raw)
+        except Exception as e:
+            charts.append({"spec": None, "svg": None, "error": f"JSON 解析失败: {e}"})
+            return m.group(0)
+        if vlc is None:
+            charts.append({"spec": spec, "svg": None, "error": "vl-convert-python 未安装"})
+            return m.group(0)
+        try:
+            svg = vlc.vegalite_to_svg(vl_spec=spec)
+        except Exception as e:
+            charts.append({"spec": spec, "svg": None, "error": f"渲染失败: {e}"})
+            return m.group(0)
+        charts.append({"spec": spec, "svg": svg, "error": None})
+        return svg if inline_svg else m.group(0)
+
+    new_md = _VEGALITE_BLOCK_RE.sub(_sub, markdown or "")
+    return new_md, charts
+
+
+class DeepResearcher:
+    """深度研究编排器: 把单轮 RAG(web_ask) 升级成"分章、带全局引用的调研报告"。
+
+    流程: LLM 规划大纲(章节+子查询) → _multi_search 一次并发扇出 → 每章挑高分候选进
+    全局来源池(跨章去重, 全局编号) → batch_extract 一次并发取证 → 逐章 LLM 综合(引用
+    沿用全局 [n] 编号, 数值数据产出 vega-lite 图、流程/架构产出 mermaid 图) → 缺口反思
+    (审稿找证据不足的章节, 换角度补搜、新来源续编号、重写该章, 最多 RESEARCH_MAX_ROUNDS 轮)
+    → 提炼结论 → 代码拼装完整 Markdown 报告(参考来源不靠 LLM 生成) → 把 vega-lite 块渲染成
+    内联 SVG 矢量图(可选依赖 vl-convert-python, 缺失则保留 spec 交消费端渲染)。
+
+    复用: 检索层 _multi_search / _result_dicts(官方源加权重排), 证据层 batch_extract +
+    text_quality_ok(正文质检, snippet 兜底, 与 answer() 同口径), 引用规范沿用
+    answer_from_sources; 规划失败降级 plan_queries 静态扇出, 不因 LLM 抽风整体失败。
+    与 web_ask 的边界: 一个问题要一段结论用 web_ask(轻, 1 次 LLM); 一个主题要一篇
+    分章报告才用本工具(重, 章节数+2 次 LLM 调用)。全程受章节/子查询/来源数护栏约束。
+    """
+
+    def __init__(self, engine):
+        self.e = engine
+
+    def research(self, query="", num_sections=0, sources_per_section=0, engines=None,
+                 time_range=None, categories=None, language=None, render_charts=True,
+                 report_type="standard") -> dict:
+        t0 = time.time()
+        query = (query or "").strip()
+        if not query:
+            return {"query": query, "error": "query 不能为空"}
+        if not self.e.llm.is_configured():
+            return {"query": query,
+                    "error": "web_research 需要 LLM 做规划与综合, 请在 .env 配置 DEEPSEEK_API_KEY"}
+        rt = resolve_report_type(report_type)
+        # sources_per_section=0 → 用报告类型默认; 显式给了则尊重(clamp 1..5)
+        sources_per_section = max(1, min(int(sources_per_section or rt["sources"]), 5))
+
+        usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+        def acc(u):
+            for k in usage:
+                usage[k] += int((u or {}).get(k) or 0)
+
+        # 1. 规划大纲(失败自动降级, 不阻断)
+        plan = self._plan(query, num_sections, acc, rt=rt)
+        sections = plan["sections"]
+
+        # outline 类型: 只做规划, 不检索不综合, 直接返回可确认的大纲预览(便于两段式先定结构)
+        if rt.get("outline_only"):
+            report = self._assemble_outline(plan["title"], query, sections, rt)
+            return {
+                "query": query, "title": plan["title"], "report": report,
+                "sections": [{"title": s["title"], "queries": s["queries"]} for s in sections],
+                "sources": [], "charts": [], "plan_degraded": plan["degraded"],
+                "report_type": rt["name"], "outline_only": True,
+                "stats": {"sections": len(sections),
+                          "sub_queries": len({q for s in sections for q in s["queries"]})},
+                "usage": usage, "model": self.e.llm.model,
+                "elapsed_ms": int((time.time() - t0) * 1000),
+            }
+
+        # 2. 全部子查询一次并发扇出(独立缓存 + canonical_url 去重)
+        all_queries = list(dict.fromkeys(q for s in sections for q in s["queries"]))[:RESEARCH_MAX_QUERIES]
+        grouped, primary_error, n_failed = self.e._multi_search(
+            all_queries, engines=engines, time_range=time_range,
+            categories=categories, language=language, group=True)
+        if not any(grouped.get(q) for q in all_queries):
+            return {"query": query, "error": f"扇出检索无结果: {primary_error or '未知原因'}"}
+
+        # 3. 取证: 每章高分候选进全局来源池, 一次并发抓正文, 质检不过回退 snippet
+        section_urls, pool = self._collect_candidates(sections, grouped, sources_per_section)
+        sources, url_to_id = self._build_sources(pool)
+        if not sources:
+            return {"query": query, "error": "检索有结果但正文抓取全部失败"}
+        by_id = {s["id"]: s for s in sources}
+
+        # 4. 逐章综合(每章只喂本章来源, 引用用全局编号)
+        out_sections = []
+        for sec, urls in zip(sections, section_urls):
+            ids = [url_to_id[u] for u in urls if u in url_to_id][:sources_per_section]
+            if not ids:
+                content = "(本章未检索到可用资料, 现有报告未覆盖该侧面。)"
+            else:
+                content = self._write_section(query, sec, [by_id[i] for i in ids], acc, rt=rt)
+            out_sections.append({"title": sec["title"], "content": content, "source_ids": ids})
+
+        # 5. 缺口反思: 审稿找证据不足的章节 → 换角度补搜 → 新来源沿全局编号追加 → 重写该章
+        rounds_used = 0
+        for _ in range(max(0, RESEARCH_MAX_ROUNDS)):
+            gaps = self._find_gaps(query, out_sections, acc)
+            if not gaps:
+                break
+            if not self._fill_gaps(query, sections, out_sections, gaps, sources, url_to_id,
+                                   sources_per_section, engines, time_range, categories,
+                                   language, acc, rt=rt):
+                break
+            rounds_used += 1
+
+        # 6. 结论 + 汇编报告(参考来源由代码按全局编号拼装, 保证与正文引用一致)
+        conclusion = self._write_conclusion(query, out_sections, acc, rt=rt)
+        report = self._assemble(plan["title"], query, out_sections, conclusion, sources)
+
+        # 7. 把 ```vega-lite 块渲染成内联 SVG 矢量图(装了 vl-convert 才生效, 否则原样保留)
+        charts = []
+        if render_charts:
+            report, charts = render_vegalite_charts(report, inline_svg=True)
+
+        def _excerpt(s):
+            ex = self.e.llm._relevant_excerpt(query, s.get("markdown") or "", max_chars=280)
+            return re.sub(r"\s+", " ", ex).strip()[:280]
+
+        return {
+            "query": query,
+            "title": plan["title"],
+            "report": report,
+            "sections": out_sections,
+            "sources": [{"id": s["id"], "title": s["title"], "url": s["url"],
+                         "method": s.get("method", ""), "excerpt": _excerpt(s)} for s in sources],
+            "plan_degraded": plan["degraded"],
+            "report_type": rt["name"],
+            "charts": charts,
+            "stats": {"sub_queries": len(all_queries), "search_failed": n_failed,
+                      "sources_used": len(sources), "reflect_rounds": rounds_used,
+                      "sections_refined": sum(1 for s in out_sections if s.get("refined")),
+                      "charts_rendered": sum(1 for c in charts if c.get("svg")),
+                      "charts_total": len(charts)},
+            "usage": usage,
+            "model": self.e.llm.model,
+            "elapsed_ms": int((time.time() - t0) * 1000),
+        }
+
+    def _plan(self, query: str, num_sections: int, acc, rt=None) -> dict:
+        """LLM 拆大纲; 解析失败降级为 plan_queries 静态扇出的单章计划(degraded=True)。"""
+        rt = rt or REPORT_TYPES["standard"]
+        lo, hi = rt.get("sections", (3, RESEARCH_MAX_SECTIONS))
+        n = int(num_sections or 0)
+        want = str(n) if 3 <= n <= RESEARCH_MAX_SECTIONS else f"{lo}~{hi}"
+        system = (
+            "你是调研规划师, 把调研主题拆解成报告大纲。只输出一个 JSON 对象, 不要解释、不要代码块。格式: "
+            '{"title": "报告标题", "sections": [{"title": "章节标题", "queries": ["搜索查询", ...]}]}。'
+            f"要求: {want} 个章节, {rt.get('plan_hint', '覆盖主题的不同侧面且互不重叠')}; "
+            "每章 1~3 条具体可搜的查询(带实体和限定词, 不要泛词); 主题涉及国外技术/产品时查询可中英混用。"
+        )
+        # max_tokens 需给足: 推理型模型(如 deepseek-v4-flash)思考 token 也计入,
+        # 预算太小会被推理耗尽导致 content 为空(实测 500 全被吃光)。
+        out = self.e.llm.chat(
+            [{"role": "system", "content": system},
+             {"role": "user", "content": f"调研主题: {query}"}],
+            temperature=0.3, max_tokens=1600)
+        if isinstance(out, dict) and not out.get("error"):
+            acc(out.get("usage"))
+            m = re.search(r"\{.*\}", out.get("content", ""), re.S)
+            if m:
+                try:
+                    data = json.loads(m.group(0))
+                    secs = []
+                    for s in (data.get("sections") or [])[:hi]:
+                        qs = [str(q).strip() for q in (s.get("queries") or []) if str(q).strip()][:3]
+                        if s.get("title") and qs:
+                            secs.append({"title": str(s["title"]).strip(), "queries": qs})
+                    if secs:
+                        return {"title": str(data.get("title") or query).strip(),
+                                "sections": secs, "degraded": False}
+                except Exception:
+                    pass
+        subqs = [t[0] for t in plan_queries(query, mode="auto")]
+        return {"title": query, "degraded": True,
+                "sections": [{"title": "综合调研", "queries": [query] + subqs[:2]}]}
+
+    def _collect_candidates(self, sections, grouped, per_section):
+        """每章合并其子查询结果并重排, 取 2x 候选(留抓取失败缓冲)进全局池(跨章去重)。"""
+        pool, section_urls = {}, []
+        for sec in sections:
+            merged, seen = [], set()
+            for q in sec["queries"]:
+                for r in grouped.get(q, []):
+                    key = canonical_url(r.url)
+                    if r.url and key not in seen:
+                        seen.add(key)
+                        merged.append(r)
+            ranked = self.e._result_dicts(sec["queries"][0], merged, top_k=per_section * 2)
+            urls = []
+            for r in ranked:
+                u = clean_url(r["url"])
+                if u not in pool and len(pool) >= RESEARCH_MAX_SOURCES:
+                    continue
+                pool.setdefault(u, r)
+                urls.append(u)
+            section_urls.append(urls)
+        return section_urls, pool
+
+    def _build_sources(self, pool, start_id=1) -> tuple:
+        """并发抓全池正文, 质检通过才编号入册(从 start_id 起); 返回 (sources, url→全局编号)。"""
+        urls = list(pool.keys())
+        extracted = self.e.extractor.batch_extract(urls, max_urls=len(urls))
+        sources, url_to_id = [], {}
+        for u, ext in zip(urls, extracted):
+            r = pool[u]
+            md = ext.get("markdown", "")
+            snippet = r.get("snippet", "")
+            if md and text_quality_ok(md):
+                body, method = md, ext.get("method_used", "")
+            elif text_quality_ok(snippet, min_chars=40):
+                body, method = snippet, "snippet"
+            else:
+                continue
+            sid = start_id + len(sources)
+            url_to_id[u] = sid
+            sources.append({"id": sid, "title": r.get("title") or ext.get("title", ""),
+                            "url": u, "markdown": body, "method": method})
+        return sources, url_to_id
+
+    def _find_gaps(self, query, out_sections, acc) -> list:
+        """审稿: 找出证据不足的章节, 返回 [{"section": 下标, "queries": [...]}](无缺口返回 [])。"""
+        drafts = "\n\n".join(f"[章节{i}] {s['title']}\n{s['content'][:1500]}"
+                             for i, s in enumerate(out_sections))
+        system = (
+            "你是调研报告的审稿人。审视各章草稿, 找出'证据不足'的章节: 写了'现有资料未覆盖'、"
+            "论断缺引用支撑、或本章子问题明显没答上。只输出一个 JSON 对象, 不要解释: "
+            '{"gaps": [{"section": 章节序号, "queries": ["补充搜索查询", ...]}]}。'
+            "要求: 最多挑 2 个最值得补的章节; 每章 1~2 条查询, 必须换角度/换关键词"
+            "(原角度已搜过, 重复无意义), 可中英混用; 整体证据充分时输出 {\"gaps\": []}。"
+        )
+        out = self.e.llm.chat(
+            [{"role": "system", "content": system},
+             {"role": "user", "content": f"调研主题: {query}\n\n各章草稿:\n{drafts}"}],
+            temperature=0.3, max_tokens=1600)
+        if not isinstance(out, dict) or out.get("error"):
+            return []
+        acc(out.get("usage"))
+        m = re.search(r"\{.*\}", out.get("content", ""), re.S)
+        if not m:
+            return []
+        try:
+            data = json.loads(m.group(0))
+        except Exception:
+            return []
+        gaps = []
+        for g in (data.get("gaps") or [])[:2]:
+            try:
+                idx = int(g.get("section"))
+            except (TypeError, ValueError):
+                continue
+            qs = [str(q).strip() for q in (g.get("queries") or []) if str(q).strip()][:2]
+            if 0 <= idx < len(out_sections) and qs:
+                gaps.append({"section": idx, "queries": qs})
+        return gaps
+
+    def _fill_gaps(self, query, sections, out_sections, gaps, sources, url_to_id,
+                   per_section, engines, time_range, categories, language, acc, rt=None) -> bool:
+        """按缺口补搜取证(新来源沿全局编号追加, 预算 RESEARCH_REFLECT_SOURCES), 重写受影响章节。"""
+        all_new_q = list(dict.fromkeys(q for g in gaps for q in g["queries"]))
+        grouped, _, _ = self.e._multi_search(
+            all_new_q, engines=engines, time_range=time_range,
+            categories=categories, language=language, group=True)
+        budget = RESEARCH_REFLECT_SOURCES
+        filled = False
+        for g in gaps:
+            if budget <= 0:
+                break
+            merged, seen = [], set()
+            for q in g["queries"]:
+                for r in grouped.get(q, []):
+                    key = canonical_url(r.url)
+                    if r.url and key not in seen:
+                        seen.add(key)
+                        merged.append(r)
+            ranked = self.e._result_dicts(g["queries"][0], merged, top_k=per_section * 2)
+            new_pool = {}
+            for r in ranked:
+                u = clean_url(r["url"])
+                if u not in url_to_id and u not in new_pool:
+                    new_pool[u] = r
+                if len(new_pool) >= min(budget, per_section):
+                    break
+            if not new_pool:
+                continue
+            added, add_map = self._build_sources(new_pool, start_id=len(sources) + 1)
+            if not added:
+                continue
+            sources.extend(added)
+            url_to_id.update(add_map)
+            budget -= len(added)
+            idx = g["section"]
+            sec = {"title": sections[idx]["title"],
+                   "queries": sections[idx]["queries"] + g["queries"]}
+            ids = list(dict.fromkeys(out_sections[idx]["source_ids"] + [s["id"] for s in added]))
+            out_sections[idx] = {
+                "title": sec["title"],
+                "content": self._write_section(query, sec, [sources[i - 1] for i in ids], acc, rt=rt),
+                "source_ids": ids,
+                "refined": True,
+            }
+            filled = True
+        return filled
+
+    def _assemble_outline(self, title, query, sections, rt) -> str:
+        """outline 类型: 把规划出的大纲拼成可确认的 Markdown 预览(不含正文/引用)。"""
+        lines = [f"# {title}", "",
+                 f"> 调研大纲预览（report_type={rt['name']} · {rt.get('label','')}）— 主题：{query}",
+                 "", "> 这是检索前的结构预览；确认后可用 report_type=standard/detailed/comparison 生成全文。", ""]
+        for i, s in enumerate(sections, 1):
+            lines.append(f"## {i}. {s['title']}")
+            lines.append(f"- 拟检索：{'；'.join(s['queries'])}")
+            lines.append("")
+        return "\n".join(lines)
+
+    SECTION_SYSTEM = (
+        "你是严谨的调研报告撰写者, 正在撰写报告的一个章节。只依据【资料】撰写, 绝不编造。要求:\n"
+        "1. 简体中文 Markdown 正文(可用小标题/列表/表格); 不要重复输出本章标题, 不要输出参考来源清单。\n"
+        "2. 每个关键论断后标注来源编号(如 [3][7]); 编号必须照抄资料方括号里的全局编号, 不得自行重编。\n"
+        "3. 版本号/价格/日期/数值照抄资料原值并注明其时间; 官方与二手来源冲突时以官方为准并指出分歧。\n"
+        "4. 资料不足以回答的子问题, 明确写'现有资料未覆盖', 不要强行作答。\n"
+        "5. 资料含可对比的数值/版本/特性时优先用 Markdown 表格呈现。\n"
+        "6. 资料含可量化对比的数值/占比/趋势(star 数、性能分、份额、时间序列等)时, 用 ```vega-lite "
+        "代码块画矢量图: 内容为合法的 Vega-Lite v5 JSON, data.values 内联且数值只能照抄资料, "
+        "选 bar/line/point/arc 等合适 mark; 例:\n"
+        "```vega-lite\n"
+        '{"$schema":"https://vega.github.io/schema/vega-lite/v5.json","title":"各框架 Star 数",'
+        '"data":{"values":[{"框架":"A","star":27300},{"框架":"B","star":43000}]},"mark":"bar",'
+        '"encoding":{"x":{"field":"框架","type":"nominal"},"y":{"field":"star","type":"quantitative"}}}\n'
+        "```\n"
+        "图后用一行注明来源编号。流程/架构/时间线等非数值结构图才用 mermaid 代码块。"
+        "数据不足就用文字或表格, 绝不臆造数值硬画图。"
+    )
+
+    def _write_section(self, query, sec, sec_sources, acc, rt=None) -> str:
+        rt = rt or REPORT_TYPES["standard"]
+        rel_q = " ".join([sec["title"]] + sec["queries"])
+        blocks = []
+        for s in sec_sources:
+            body = self.e.llm._relevant_excerpt(rel_q, s["markdown"], max_chars=4000)
+            blocks.append(f"[{s['id']}] 标题: {s['title']}\n来源: {s['url']}\n内容:\n{body}")
+        hint = rt.get("section_hint") or ""
+        user = (f"报告主题: {query}\n本章标题: {sec['title']}\n"
+                f"本章要回答的子问题: {'; '.join(sec['queries'])}\n"
+                + (f"本章写作侧重: {hint}\n" if hint else "")
+                + "\n【资料】\n" + "\n\n---\n\n".join(blocks))
+        out = self.e.llm.chat(
+            [{"role": "system", "content": self.SECTION_SYSTEM},
+             {"role": "user", "content": user}],
+            temperature=0.3, max_tokens=rt.get("section_tokens", RESEARCH_SECTION_TOKENS))
+        if out.get("error"):
+            return f"(本章生成失败: {out['error']})"
+        acc(out.get("usage"))
+        return out.get("content", "").strip()
+
+    def _write_conclusion(self, query, out_sections, acc, rt=None) -> str:
+        rt = rt or REPORT_TYPES["standard"]
+        drafts = "\n\n".join(f"### {s['title']}\n{s['content'][:2000]}" for s in out_sections)
+        hint = rt.get("conclusion_hint") or "先给核心结论, 再给可操作建议; 各章观点冲突或证据不足处如实指出"
+        system = (
+            "你是严谨的调研报告撰写者。基于已写好的各章内容提炼'结论与建议'(300~500 字, 简体中文 Markdown, "
+            "直接输出正文, 不要输出'结论与建议'标题本身):\n"
+            "1. 只能基于章节内容, 不引入新信息; 沿用章节中已有的 [n] 引用编号, 不新增编号。\n"
+            f"2. {hint}。"
+        )
+        out = self.e.llm.chat(
+            [{"role": "system", "content": system},
+             {"role": "user", "content": f"报告主题: {query}\n\n各章内容:\n{drafts}"}],
+            temperature=0.3, max_tokens=1600)
+        if out.get("error"):
+            return f"(结论生成失败: {out['error']})"
+        acc(out.get("usage"))
+        return out.get("content", "").strip()
+
+    def _assemble(self, title, query, out_sections, conclusion, sources) -> str:
+        lines = [f"# {title}", "", f"> 调研主题: {query}", ""]
+        for s in out_sections:
+            lines += [f"## {s['title']}", "", s["content"], ""]
+        lines += ["## 结论与建议", "", conclusion, "", "## 参考来源", ""]
+        for s in sources:
+            lines.append(f"[{s['id']}] {s['title']} — {s['url']}")
+        return "\n".join(lines)
 
 
 # ================================================================
@@ -2059,6 +2648,7 @@ class AgentSearch:
         self.llm = DeepSeekClient()
         self.github = GitHubEngine()
         self.comparator = SolutionComparator(self)
+        self.researcher = DeepResearcher(self)
         self._prefer_searxng = False
 
         # 检测后端可用性
@@ -2076,6 +2666,60 @@ class AgentSearch:
             sys.stderr.write(f"[*] FlareSolverr: 离线 (CAPTCHA 引擎不可用)\n")
         sys.stderr.write(f"[*] Jina Reader: 可用 (r.jina.ai 内容提取)\n\n")
 
+    def diagnostics(self, test_query: str = "", test_deepseek: bool = False) -> dict:
+        """返回服务链路状态。默认不真实调用 DeepSeek，避免无意消耗 token。"""
+        diag = {
+            "searxng": {
+                "url": SEARXNG_URL,
+                "available": self.searxng.is_available(),
+                "default_engines": DEFAULT_ENGINES,
+            },
+            "flaresolverr": {
+                "url": FLARESOLVERR_URL,
+                "available": self.flaresolverr.is_available(),
+            },
+            "deepseek": {
+                "configured": self.llm.is_configured(),
+                "base_url": self.llm.base_url,
+                "model": self.llm.model,
+                "live_tested": False,
+            },
+            "jina_reader": {
+                "url": JINA_READER,
+            },
+            "cache": self.cache.stats(),
+        }
+
+        if test_query:
+            res = self.search(test_query, top_k=5, expand_mode="off")
+            diag["search_test"] = {
+                "query": test_query,
+                "ok": bool(res.get("results")) and not res.get("error"),
+                "total": len(res.get("results", [])),
+                "source": res.get("source"),
+                "engines_used": res.get("engines_used", []),
+                "error": res.get("error"),
+            }
+
+        if test_deepseek:
+            diag["deepseek"]["live_tested"] = True
+            if not self.llm.is_configured():
+                diag["deepseek"]["live_ok"] = False
+                diag["deepseek"]["error"] = "未配置 DEEPSEEK_API_KEY"
+            else:
+                out = self.llm.chat(
+                    [{"role": "user", "content": "只回复 OK 两个字母。"}],
+                    temperature=0.0,
+                    max_tokens=8,
+                )
+                diag["deepseek"]["live_ok"] = not bool(out.get("error"))
+                if out.get("error"):
+                    diag["deepseek"]["error"] = out["error"]
+                else:
+                    diag["deepseek"]["usage"] = out.get("usage", {})
+
+        return diag
+
     def _result_dicts(self, query: str, results: list[SearchResult], top_k: int, rerank=True,
                       weight_map=None, rerank_queries=None) -> list[dict]:
         # 容错: 检测到拼写错误时, 额外以"纠正词"为相关性上下文一并打分取 max,
@@ -2087,6 +2731,8 @@ class AgentSearch:
                 rank_score = max(result_rank_score(q, r, i) for q in score_qs)
             else:
                 rank_score = float(r.score or 0.0)
+            if r.source == "github_api" or r.engine == "github_api":
+                rank_score += 3.0
             # plan fan-out: 角度子查询的结果按权重轻度下压(只在重排时生效)
             if rerank and weight_map:
                 rank_score *= weight_map.get(canonical_url(r.url), 1.0)
@@ -2153,6 +2799,140 @@ class AgentSearch:
                     merged.append(r)
         return merged, primary_error, n_failed
 
+    def _github_supplement_queries(self, query: str) -> list[str]:
+        """把中文项目发现意图补成 GitHub 更容易命中的英文查询。"""
+        q = query.strip()
+        if not q:
+            return []
+        intent = re.search(
+            r"github|repo|repository|开源|项目|代码|量化|投研|股票|证券|期货|a股|美股|港股|"
+            r"stock|stocks|futures|trading|quant|analysis",
+            q,
+            re.I,
+        )
+        if not intent:
+            return []
+        variants = [q]
+        if re.search(r"量化|投研|股票|证券|期货|a股|美股|港股|AI|大模型|智能体", q, re.I):
+            variants.extend([
+                "daily stock analysis LLM stock",
+                "TradingAgents stock analysis",
+                "quant trading python stocks futures AI",
+            ])
+        ascii_terms = " ".join(re.findall(r"[A-Za-z][A-Za-z0-9_.-]{2,}", q))
+        if ascii_terms and ascii_terms.lower() != q.lower():
+            variants.append(ascii_terms)
+        return list(dict.fromkeys(variants))[:4]
+
+    def _github_repos_mentioned_in_results(self, results: list[SearchResult], limit: int) -> list[SearchResult]:
+        """从网页结果标题/摘要里抽 GitHub 仓库 URL，补成一手来源结果。"""
+        found = []
+        seen = set()
+        repo_re = re.compile(r"github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)", re.I)
+        loose_re = re.compile(r"\b([A-Za-z0-9_.-]{2,}/[A-Za-z0-9_.-]{2,})\b")
+
+        def add_repo(raw, strict=False):
+            repo = normalize_repo_slug(raw).rstrip(".,;:，。；：）)]}")
+            parts = repo.split("/")
+            if len(parts) != 2:
+                return
+            owner, name = parts[0], parts[1]
+            if owner.lower() in {"http:", "https:", "github.com", "www.github.com", "www", "m"}:
+                return
+            if "." in owner or not re.fullmatch(r"[A-Za-z0-9-]{1,39}", owner):
+                return
+            if not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", name):
+                return
+            if repo.lower() in seen:
+                return
+            seen.add(repo.lower())
+            found.append((repo, strict))
+
+        for r in results:
+            text = " ".join([r.title or "", r.url or "", r.snippet or "", r.content or ""])
+            for m in repo_re.finditer(text):
+                add_repo(m.group(1), strict=True)
+            for m in loose_re.finditer(text):
+                raw = m.group(1)
+                # 宽松 owner/repo 只在上下文明确提到 GitHub 时采用，减少误判路径。
+                window = text[max(0, m.start() - 80): m.end() + 80].lower()
+                if "github" in window:
+                    add_repo(raw, strict=False)
+            if len(found) >= limit:
+                break
+
+        out = []
+        for repo, strict in found[:limit]:
+            facts = self.github.repo_facts(repo)
+            if facts and not facts.get("error"):
+                stars = facts.get("stars") or 0
+                forks = facts.get("forks") or 0
+                license_id = facts.get("license") or "unknown"
+                desc = facts.get("description") or ""
+                snippet = (
+                    f"{desc} Stars: {stars}; forks: {forks}; license: {license_id}; "
+                    f"last commit: {facts.get('last_commit') or 'unknown'}; archived: {facts.get('archived')}"
+                )
+            else:
+                if not strict:
+                    continue
+                desc = ""
+                snippet = "从搜索结果中识别出的 GitHub 仓库；GitHub API 事实查询失败或被限流。"
+            out.append(SearchResult(
+                title=repo,
+                url=f"https://github.com/{repo}",
+                content=desc,
+                snippet=snippet,
+                engine="github_api",
+                score=0.0,
+                source="github_api",
+                fetched_at=datetime.utcnow().isoformat() + "Z",
+            ))
+        return out
+
+    def _github_supplement_results(self, query: str, limit: int) -> tuple[list[SearchResult], str | None]:
+        """直连 GitHub API/CLI 补充仓库结果，绕过 SearXNG GitHub 引擎限流。"""
+        limit = max(1, min(limit, 10))
+        results, seen = [], set()
+        first_error = None
+        for q in self._github_supplement_queries(query):
+            res = self.github.search(q, kind="repos", limit=limit)
+            if res.get("error") and first_error is None:
+                first_error = res["error"]
+            for item in res.get("results", []):
+                full_name = item.get("fullName") or item.get("full_name")
+                url = item.get("url") or item.get("html_url")
+                if not full_name or not url:
+                    continue
+                key = canonical_url(url)
+                if key in seen:
+                    continue
+                seen.add(key)
+                license_obj = item.get("license") or {}
+                license_id = license_obj.get("spdx_id") if isinstance(license_obj, dict) else str(license_obj)
+                stars = item.get("stargazersCount") or item.get("stargazers_count") or 0
+                forks = item.get("forksCount") or item.get("forks_count") or 0
+                pushed = item.get("pushedAt") or item.get("pushed_at") or ""
+                archived = item.get("isArchived") if "isArchived" in item else item.get("archived")
+                desc = item.get("description") or ""
+                snippet = (
+                    f"{desc} Stars: {stars}; forks: {forks}; license: {license_id or 'unknown'}; "
+                    f"last push: {(pushed or '')[:10] or 'unknown'}; archived: {bool(archived)}"
+                )
+                results.append(SearchResult(
+                    title=full_name,
+                    url=url,
+                    content=desc,
+                    snippet=snippet,
+                    engine="github_api",
+                    score=float(stars or 0),
+                    source="github_api",
+                    fetched_at=datetime.utcnow().isoformat() + "Z",
+                ))
+                if len(results) >= limit:
+                    return results, first_error
+        return results, first_error
+
     def search(self, query: str, engines=None, top_k=10, extract=False, deep=False,
                use_flaresolverr=False, time_range=None, categories=None,
                language=None, safe_search=None, rerank=True, auto_rewrite=True,
@@ -2176,6 +2956,7 @@ class AgentSearch:
             dict: {query, results, source, elapsed_ms, engines_used, ...}
         """
         t0 = time.time()
+        effective_engines = engines if engines is not None else DEFAULT_ENGINES
         backend = "flaresolverr" if use_flaresolverr else ("searxng" if self._prefer_searxng else "web")
         # auto_rewrite=False 时实际不扩展, 缓存键按 off 记(顺带覆盖 BUG-3 的 auto_rewrite 维度)
         eff_expand = expand_mode if auto_rewrite else "off"
@@ -2193,7 +2974,7 @@ class AgentSearch:
         typo_variants = []
 
         # 1. 检查缓存
-        cached = self.cache.get_search(query, engines, **cache_options)
+        cached = self.cache.get_search(query, effective_engines, **cache_options)
         if cached:
             result_dict = deepcopy(cached)
             result_dict["from_cache"] = True
@@ -2212,7 +2993,7 @@ class AgentSearch:
         elif self._prefer_searxng:
             resp = self.searxng.search(
                 query,
-                engines,
+                effective_engines,
                 time_range=time_range,
                 categories=categories,
                 language=language,
@@ -2224,7 +3005,7 @@ class AgentSearch:
                 plan = plan_queries(query, eff_expand)
                 if plan:
                     by_q, _perr, n_failed = self._multi_search(
-                        [p[0] for p in plan], engines, time_range=time_range,
+                        [p[0] for p in plan], effective_engines, time_range=time_range,
                         categories=categories, language=language, safe_search=safe_search,
                         group=True)
                     weight_of = {p[0]: p[1] for p in plan}
@@ -2258,7 +3039,7 @@ class AgentSearch:
                 corr = resp.corrections[0]
                 if corr and corr.lower() != query.strip().lower():
                     extra, _e, _n = self._multi_search(
-                        [corr], engines, time_range=time_range, categories=categories,
+                        [corr], effective_engines, time_range=time_range, categories=categories,
                         language=language, safe_search=safe_search)
                     merged, seen = [], set()
                     for r in list(resp.results) + extra:
@@ -2278,7 +3059,7 @@ class AgentSearch:
                 typo_variants = [v for v in dict.fromkeys(cand) if v and v.lower() != query.strip().lower()]
                 if typo_variants:
                     extra, _e, _n = self._multi_search(
-                        typo_variants[:2], engines, time_range=time_range, categories=categories,
+                        typo_variants[:2], effective_engines, time_range=time_range, categories=categories,
                         language=language, safe_search=safe_search)
                     if extra:
                         merged, seen = [], set()
@@ -2297,7 +3078,7 @@ class AgentSearch:
                 variants = self._llm_spelling_rewrite(query)
                 if variants:
                     extra, _e, _n = self._multi_search(
-                        variants, engines, time_range=time_range, categories=categories,
+                        variants, effective_engines, time_range=time_range, categories=categories,
                         language=language, safe_search=safe_search)
                     seen, merged = set(), []
                     for r in extra:
@@ -2308,6 +3089,26 @@ class AgentSearch:
                     resp.results = merged
                     resp.total = len(merged)
                     sys.stderr.write(f"[*] 容错: LLM 纠拼写重搜 {variants}\n")
+
+            # GitHub 直连补充: SearXNG 的 github/海外搜索引擎容易被限流或超时。
+            # 对项目发现/开源选型类查询，直接用 GitHub API/CLI 拉仓库结果并合并重排。
+            if "github" in {str(e).lower() for e in (effective_engines or [])}:
+                gh_extra = self._github_repos_mentioned_in_results(resp.results, max(top_k, 8))
+                gh_error = None
+                if not gh_extra:
+                    gh_extra, gh_error = self._github_supplement_results(query, min(max(top_k, 8), 10))
+                if gh_extra:
+                    seen = {canonical_url(r.url) for r in resp.results if r.url}
+                    for r in gh_extra:
+                        key = canonical_url(r.url)
+                        if key not in seen:
+                            seen.add(key)
+                            resp.results.append(r)
+                    resp.total = len(resp.results)
+                    if "github_api" not in resp.engines_used:
+                        resp.engines_used.append("github_api")
+                elif gh_error:
+                    sys.stderr.write(f"[*] GitHub 直连补充失败: {gh_error[:200]}\n")
         else:
             resp = self.web_fallback.search(query, top_k)
 
@@ -2325,13 +3126,15 @@ class AgentSearch:
             "source": resp.source,
             "error": resp.error,
             "engines_used": resp.engines_used,
+            "engines_requested": effective_engines,
             "elapsed_ms": int((time.time() - t0) * 1000),
             "from_cache": False,
         }
 
-        # 5. 缓存
-        if not resp.error:
-            self.cache.set_search(query, result_dict, engines, **cache_options)
+        # 5. 缓存。不要缓存空结果：上游代理/搜索引擎短暂故障时，SearXNG 可能
+        # 返回 error=None 但 results=[]，缓存后会把恢复后的正常结果继续压成空。
+        if not resp.error and result_dict["results"]:
+            self.cache.set_search(query, result_dict, effective_engines, **cache_options)
 
         # 6. 内容提取 (可选)
         if extract and result_dict["results"]:
@@ -2353,7 +3156,8 @@ class AgentSearch:
              "每行输出一个候选, 最多 2 个, 不要任何解释。若原查询没有拼写错误, 原样输出一行。"},
             {"role": "user", "content": query},
         ]
-        out = self.llm.chat(msgs, temperature=0.0, max_tokens=60)
+        # max_tokens 给足: 推理型模型思考 token 计入预算, 60 会被推理吃光返回空 → L3 静默失效。
+        out = self.llm.chat(msgs, temperature=0.0, max_tokens=1200)
         if not isinstance(out, dict) or out.get("error"):
             return []
         cands = [ln.strip() for ln in (out.get("content") or "").splitlines() if ln.strip()]
@@ -2389,7 +3193,7 @@ class AgentSearch:
             relevance=relevance, return_markdown=return_markdown)
 
     def github_search(self, query: str, kind="repos", limit=5) -> dict:
-        """搜索 GitHub（仓库/代码/issue/PR），走本机 gh CLI"""
+        """搜索 GitHub（仓库/代码/issue/PR），优先 gh CLI，失败时走 GitHub API"""
         return self.github.search(query, kind=kind, limit=limit)
 
     def github_compare(self, repos=None, query=None, limit=5) -> dict:
@@ -2402,6 +3206,15 @@ class AgentSearch:
         return self.comparator.compare(
             topic=topic, candidates=candidates, dimensions=dimensions,
             num_sources=num_sources, use_llm=use_llm, deep=deep)
+
+    def research(self, query: str, num_sections=0, sources_per_section=0, engines=None,
+                 time_range=None, categories=None, language=None, render_charts=True,
+                 report_type="standard") -> dict:
+        """深度研究: 规划大纲→扇出检索→取证→分章综合, 产出带 [n] 引用的 Markdown 调研报告。"""
+        return self.researcher.research(
+            query, num_sections=num_sections, sources_per_section=sources_per_section,
+            engines=engines, time_range=time_range, categories=categories,
+            language=language, render_charts=render_charts, report_type=report_type)
 
     def answer(self, query: str, engines=None, num_sources=4, deep=False,
                use_flaresolverr=False, time_range=None, categories=None,
@@ -2511,7 +3324,12 @@ def main():
     parser.add_argument("--top-k", "-k", type=int, default=10, help="返回结果数")
     parser.add_argument("--extract", "-x", action="store_true", help="提取首条结果全文")
     parser.add_argument("--answer", "-a", action="store_true", help="用 DeepSeek 生成带引用的答案 (RAG)")
-    parser.add_argument("--sources", "-n", type=int, default=4, help="--answer 模式抓取的来源数 (默认 4)")
+    parser.add_argument("--research", "-r", action="store_true", help="深度研究: 分章带引用的 Markdown 调研报告 (慢, 多次 LLM)")
+    parser.add_argument("--report-type", default="standard",
+                        choices=["standard", "detailed", "comparison", "outline"],
+                        help="--research 报告类型: standard/detailed/comparison/outline(只规划秒回)")
+    parser.add_argument("--sections", type=int, default=0, help="--research 模式章节数 (0=按类型自动)")
+    parser.add_argument("--sources", "-n", type=int, default=4, help="--answer 模式抓取的来源数 (默认 4); --research 模式为每章来源数")
     parser.add_argument("--deep", "-d", action="store_true", help="Crawl4AI 深度抓取")
     parser.add_argument("--flaresolverr", "-f", action="store_true", help="用 FlareSolverr 绕过 CAPTCHA 搜 Google/Bing/DDG")
     parser.add_argument("--url", "-u", help="直接提取指定 URL 内容")
@@ -2597,6 +3415,37 @@ def main():
 
     engines = args.engines.split(",") if args.engines else None
     categories = args.categories.split(",") if args.categories else None
+
+    # 深度研究模式
+    if args.research:
+        # -n 默认 4 是 answer 模式的值; research 不显式传时用 0=按报告类型自动
+        spp = 0 if args.sources == 4 else min(args.sources, 5)
+        result = search.research(args.query, report_type=args.report_type,
+                                 num_sections=args.sections, sources_per_section=spp,
+                                 engines=engines, time_range=args.time_range,
+                                 categories=categories, language=args.language)
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return
+        if result.get("error"):
+            print(f"[!] {result['error']}")
+            return
+        stats = result.get("stats", {})
+        u = result.get("usage", {})
+        print(f"\n{'='*60}")
+        print(f"  主题: {result['query']}  [{result.get('report_type','standard')}]")
+        print(f"  模型: {result.get('model','?')} | 耗时: {result.get('elapsed_ms',0)}ms"
+              f" | token: {u.get('total_tokens','?')}")
+        if result.get("outline_only"):
+            print(f"  大纲预览: {stats.get('sections','?')} 章 / {stats.get('sub_queries','?')} 条拟检索查询")
+        else:
+            print(f"  子查询: {stats.get('sub_queries','?')} | 来源: {stats.get('sources_used','?')}"
+                  f" | 反思: {stats.get('reflect_rounds',0)} 轮/{stats.get('sections_refined',0)} 章重写"
+                  f" | 图表: {stats.get('charts_rendered',0)}/{stats.get('charts_total',0)} 渲染"
+                  f"{' | 规划降级' if result.get('plan_degraded') else ''}")
+        print(f"{'='*60}\n")
+        print(result["report"])
+        return
 
     # RAG 问答模式
     if args.answer:

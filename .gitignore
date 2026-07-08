@@ -2,8 +2,12 @@
 .env
 .env.local
 .mcp.json
+.mcp.json.bak*
 .codex/
 .claude/
+
+# sing-box 代理运行时生成的配置(含实时代理服务器地址, 每次 start 重写) — 勿提交
+config/sing-box/*.json
 
 # ---- python ----
 .venv/
@@ -16,6 +20,7 @@ __pycache__/
 data/
 bench/cache/
 bench/budget.json
+logs/
 *.sqlite3
 *.sqlite3.*
 

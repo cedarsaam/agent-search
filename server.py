@@ -9,6 +9,7 @@ HTTP API — 把 AgentSearch 暴露成 REST 接口，供自建 LLM agent (functi
   GET  /health              健康检查
   POST /search              纯搜索
   POST /ask                 DeepSeek RAG 问答
+  POST /research            深度研究(分章带引用的 Markdown 调研报告)
   POST /extract             单 URL 抓正文
   POST /map                 发现站点链接
   POST /tavily/search       Tavily-compatible 搜索响应
@@ -66,6 +67,18 @@ class AskReq(BaseModel):
     categories: Optional[list[str]] = None
     language: Optional[str] = None
     safe_search: Optional[int] = None
+
+
+class ResearchReq(BaseModel):
+    query: str
+    report_type: str = "standard"       # standard / detailed / comparison / outline
+    num_sections: int = 0               # 0=按报告类型自动
+    sources_per_section: int = 0        # 0=按报告类型自动, 上限 5
+    render_charts: bool = True          # vega-lite 块渲染成内联 SVG(装了 vl-convert 才生效)
+    engines: Optional[list[str]] = None
+    time_range: Optional[str] = None
+    categories: Optional[list[str]] = None
+    language: Optional[str] = None
 
 
 class ExtractReq(BaseModel):
@@ -127,12 +140,7 @@ class TavilySearchReq(BaseModel):
 
 @app.get("/health")
 def health():
-    eng = get_engine()
-    return {
-        "status": "ok",
-        "searxng": eng.searxng.is_available(),
-        "deepseek_configured": eng.llm.is_configured(),
-    }
+    return {"status": "ok", **get_engine().diagnostics()}
 
 
 @app.post("/search")
@@ -153,6 +161,17 @@ def ask(req: AskReq):
         deep=req.deep, use_flaresolverr=req.use_flaresolverr,
         time_range=req.time_range, categories=req.categories,
         language=req.language, safe_search=req.safe_search,
+    )
+
+
+@app.post("/research")
+def research(req: ResearchReq):
+    """深度研究: 规划大纲→扇出检索→取证→分章综合, 返回带 [n] 引用的完整 Markdown 报告。"""
+    return get_engine().research(
+        req.query, report_type=req.report_type, num_sections=req.num_sections,
+        sources_per_section=req.sources_per_section, render_charts=req.render_charts,
+        engines=req.engines, time_range=req.time_range,
+        categories=req.categories, language=req.language,
     )
 
 
@@ -285,8 +304,28 @@ def openai_tools():
         {
             "type": "function",
             "function": {
+                "name": "web_research",
+                "description": "深度研究：规划大纲→并发扇出检索→抓正文取证→分章综合，产出带 [n] 引用的完整 Markdown 调研报告(标题/分章正文/结论与建议/参考来源)，数值数据渲染为内联 SVG 矢量图。需要可直接交付的调研报告(技术选型/领域综述/竞品分析)时调用。最重的工具(多路搜索+抓十余页正文+多次 LLM，约 1~3 分钟)：只要链接用 web_search，一个问题要一段结论用 web_ask，要整篇报告才用本工具。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "调研主题，越具体越好"},
+                        "report_type": {"type": "string", "enum": ["standard", "detailed", "comparison", "outline"],
+                                        "description": "报告类型：standard 标准/detailed 深度详报/comparison 选型对比/outline 大纲预览(只规划秒回)", "default": "standard"},
+                        "num_sections": {"type": "integer", "description": "章节数，0=按类型自动", "default": 0},
+                        "sources_per_section": {"type": "integer", "description": "每章引用来源数，0=按类型自动(上限 5)", "default": 0},
+                        "time_range": {"type": "string", "enum": ["day", "month", "year"]},
+                        "language": {"type": "string", "description": "语言代码，如 zh-CN / en-US"},
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "github_search",
-                "description": "在 GitHub 搜索仓库/代码/issue/PR(走本机 gh CLI)。查开源项目、代码用法、issue 时用，比网页搜索精准。repos 结果含 license/pushedAt(最近提交)/isArchived(是否归档)/forksCount；做开源选型时综合维护活跃度+license(规避 GPL/AGPL)+star 判断，别只看 star。",
+                "description": "在 GitHub 搜索仓库/代码/issue/PR(优先 gh CLI，失败时走 GitHub API)。查开源项目、代码用法、issue 时用，比网页搜索精准。repos 结果含 license/pushedAt(最近提交)/isArchived(是否归档)/forksCount；做开源选型时综合维护活跃度+license(规避 GPL/AGPL)+star 判断，别只看 star。",
                 "parameters": {
                     "type": "object",
                     "properties": {

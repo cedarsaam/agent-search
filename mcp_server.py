@@ -11,11 +11,20 @@ MCP server — 把本地搜索服务暴露给 Claude Code / Claude Desktop / Cur
 依赖：mcp[cli]（已装在 .venv）
 """
 
+import os
+
 from mcp.server.fastmcp import FastMCP
 
 from search import AgentSearch
 
-mcp = FastMCP("agent-search")
+mcp = FastMCP(
+    "agent-search",
+    host=os.environ.get("MCP_HOST", "127.0.0.1"),
+    port=int(os.environ.get("MCP_PORT", "8000")),
+    streamable_http_path=os.environ.get("MCP_STREAMABLE_HTTP_PATH", "/mcp"),
+    sse_path=os.environ.get("MCP_SSE_PATH", "/sse"),
+    message_path=os.environ.get("MCP_MESSAGE_PATH", "/messages/"),
+)
 
 # 全局单例：构造时探测后端，只做一次
 _engine = None
@@ -26,6 +35,21 @@ def engine() -> AgentSearch:
     if _engine is None:
         _engine = AgentSearch()
     return _engine
+
+
+@mcp.tool()
+def health_check(test_query: str = "OpenAI", test_deepseek: bool = False) -> dict:
+    """检查 Agent Search 全链路状态。
+
+    返回 SearXNG、默认搜索引擎、FlareSolverr、DeepSeek 配置、缓存统计；
+    默认会做一次轻量搜索测试，但不会真实调用 DeepSeek。需要确认 DeepSeek API
+    可用时，把 test_deepseek 设为 true，会产生一次极小 token 消耗。
+
+    Args:
+        test_query: 搜索测试词，留空则不做搜索测试
+        test_deepseek: 是否真实调用 DeepSeek 做 live test
+    """
+    return engine().diagnostics(test_query=test_query, test_deepseek=test_deepseek)
 
 
 @mcp.tool()
@@ -96,6 +120,67 @@ def web_ask(query: str, num_sources: int = 4, use_flaresolverr: bool = False,
     return {
         "answer": res.get("answer", ""),
         "sources": res.get("sources", []),
+        "model": res.get("model", ""),
+        "usage": res.get("usage", {}),
+        "elapsed_ms": res.get("elapsed_ms"),
+        "error": res.get("error"),
+    }
+
+
+@mcp.tool()
+def web_research(query: str, report_type: str = "standard", num_sections: int = 0,
+                 sources_per_section: int = 0, render_charts: bool = True,
+                 time_range: str = "", categories: str = "", language: str = "") -> dict:
+    """深度研究：规划大纲→并发扇出检索→抓正文取证→分章综合，产出带 [n] 引用的 Markdown 调研报告。
+
+    需要"一篇分章节、带引用、可直接交付的调研报告"时调用(技术选型调研、领域综述、竞品分析等)。
+    这是本服务最重的工具(多路搜索 + 抓十余页正文 + 章节数+2 次 LLM 调用，约 1~3 分钟)：
+    只要链接用 web_search；一个问题要一段结论用 web_ask；要整篇报告才用本工具。
+    返回的 report 字段是完整 Markdown 报告(标题/分章正文/结论与建议/参考来源)，
+    sources 里每条带全局编号+excerpt 证据，与正文 [n] 引用一一对应。
+    自带一轮"缺口反思"：综合后自动审稿，对证据不足的章节换角度补搜并重写。
+    图表：数值/占比/趋势数据用 vega-lite 画**矢量图**(装了 vl-convert-python 会直接渲染成
+    内联 SVG，否则保留 spec 交消费端渲染)；流程/架构/时间线用 mermaid。两类图数据均来自来源。
+
+    Args:
+        query: 调研主题(越具体越好，如"开源向量数据库选型: milvus vs qdrant vs weaviate")
+        report_type: 报告类型模板(默认 standard)：
+            standard=标准调研；detailed=深度详报(5~6 章、每章篇幅更长、来源更多)；
+            comparison=选型对比(章节按对比维度组织、多用表格+图、给选型建议)；
+            outline=大纲预览(只规划不检索, 秒回, 供先确认结构再生成全文的两段式)。
+        num_sections: 章节数(0=按报告类型自动)
+        sources_per_section: 每章引用的来源数(0=按报告类型自动，上限 5)
+        render_charts: 是否把 vega-lite 块渲染成内联 SVG(默认 True；False 则报告保留 ```vega-lite spec)
+        time_range: 时间范围 day/month/year，留空不过滤
+        categories: SearXNG 分类，逗号分隔，如 general,news
+        language: 语言代码，如 zh-CN / en-US
+    """
+    cats = [c.strip() for c in categories.split(",") if c.strip()] if categories else None
+    res = engine().research(
+        query,
+        report_type=report_type,
+        num_sections=num_sections,
+        sources_per_section=sources_per_section,
+        render_charts=render_charts,
+        time_range=time_range or None,
+        categories=cats,
+        language=language or None,
+    )
+    # charts 里的 svg 可能较大, MCP 回包只给摘要(spec + 是否渲染成功); 完整 SVG 已内联在 report 里
+    charts = [{"spec": c.get("spec"), "rendered": bool(c.get("svg")), "error": c.get("error")}
+              for c in res.get("charts", [])]
+    return {
+        "title": res.get("title", ""),
+        "report": res.get("report", ""),
+        "report_type": res.get("report_type", ""),
+        "outline_only": res.get("outline_only", False),
+        "sources": res.get("sources", []),
+        "charts": charts,
+        "stats": res.get("stats", {}),
+        "plan_degraded": res.get("plan_degraded"),
+        "model": res.get("model", ""),
+        "usage": res.get("usage", {}),
+        "elapsed_ms": res.get("elapsed_ms"),
         "error": res.get("error"),
     }
 
@@ -141,7 +226,7 @@ def web_crawl(url: str, max_depth: int = 2, max_pages: int = 30, scope: str = "s
 
 @mcp.tool()
 def github_search(query: str, kind: str = "repos", limit: int = 5) -> dict:
-    """在 GitHub 上搜索仓库/代码/issue/PR(走本机已登录的 gh CLI，比网页搜索精准)。
+    """在 GitHub 上搜索仓库/代码/issue/PR(优先 gh CLI，失败时走 GitHub API，比网页搜索精准)。
 
     查开源项目、找代码用法、查 issue/PR 时调用本工具，优先于 web_search。
 
@@ -219,7 +304,9 @@ def web_extract(url: str, deep: bool = False) -> dict:
 
 
 def main():
-    mcp.run()  # 默认 stdio 传输
+    transport = os.environ.get("MCP_TRANSPORT", "stdio")
+    mount_path = os.environ.get("MCP_MOUNT_PATH") or None
+    mcp.run(transport=transport, mount_path=mount_path)
 
 
 if __name__ == "__main__":
