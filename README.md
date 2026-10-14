@@ -137,6 +137,7 @@ cp .mcp.json.example .mcp.json   # set the absolute path to this repo
 - `web_ask` (RAG) and `web_research` (report) need an OpenAI-compatible LLM key; everything else (search/extract/map/github) needs **no API key**. `web_research` is the heaviest tool (sections+2 LLM calls, ~1–3 min); install the optional `vl-convert-python` to get inline **SVG** charts instead of raw Vega-Lite specs.
 - Extraction does **not** render JS by default — install the optional `crawl4ai` and use `deep=True` for JS-heavy pages.
 - Built for **local / trusted use**: the HTTP server binds `127.0.0.1` by default and extraction has an SSRF guard (blocks localhost / private / cloud-metadata IPs). Add auth + a reverse proxy before exposing it.
+- **Outside mainland China:** the default engines (`doubao,github,wikipedia,stackoverflow`) are tuned for a China network, and `doubao` needs a Volcengine key, so plain-language queries can return 0 results. Enable `bing` / `duckduckgo` in `searxng/settings.yml` and set `AGENT_SEARCH_DEFAULT_ENGINES=bing,duckduckgo,startpage,github,wikipedia,stackoverflow` (see `.env.example`).
 - This is a personal project, maintained best-effort. Issues/PRs welcome but no SLA.
 
 ## 🙏 Acknowledgements

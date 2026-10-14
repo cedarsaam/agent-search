@@ -135,6 +135,7 @@ cp .mcp.json.example .mcp.json   # 填本仓库的绝对路径
 - `web_ask`（RAG）需要一个 OpenAI 兼容的 LLM key；其余（搜索/抽取/map/github）**无需任何 API key**。
 - 抽取默认**不渲染 JS**；JS 重页面请装可选的 `crawl4ai` 并用 `deep=True`。
 - 面向**本地/可信环境**：HTTP 默认绑 `127.0.0.1`，抽取带 SSRF 防护（拦截 localhost / 私网 / 云元数据 IP）。对外暴露前请自加认证与反向代理。
+- **在中国大陆以外使用：** 默认引擎（`doubao,github,wikipedia,stackoverflow`）针对国内网络，且 `doubao` 需要火山引擎 key，普通自然语言查询可能返回 0 条结果。请在 `searxng/settings.yml` 中启用 `bing` / `duckduckgo`，并设置 `AGENT_SEARCH_DEFAULT_ENGINES=bing,duckduckgo,startpage,github,wikipedia,stackoverflow`（见 `.env.example`）。
 - 个人项目，best-effort 维护；欢迎 issue/PR，但无 SLA。
 
 ## 🙏 致谢
